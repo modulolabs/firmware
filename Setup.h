@@ -14,13 +14,16 @@
 // For now, we have a fixed set of addresses and we turn
 // on the right module code using ifdefs based on the address
 
-#define MODULE_ADDRESS 8
+#define MODULE_ADDRESS 7
 
 #define MODULE_TYPE_LED 1
 #define MODULE_TYPE_BUTTONS 2
 #define MODULE_TYPE_KNOB 3
 #define MODULE_TYPE_SERVO 4
 #define MODULE_TYPE_GPIO 5
+#define MODULE_TYPE_RTC 6
+#define MODULE_TYPE_OLED 7
+#define MODULE_TYPE_DC 8
 
 // Module 2 is an LED
 #if MODULE_ADDRESS == 2
@@ -51,6 +54,18 @@
 
 #if MODULE_ADDRESS == 8
 #define MODULE_TYPE MODULE_TYPE_GPIO
+#endif
+
+#if MODULE_ADDRESS == 9
+#define MODULE_TYPE MODULE_TYPE_RTC
+#endif
+
+#if MODULE_ADDRESS== 10
+#define MODULE_TYPE MODULE_TYPE_OLED
+#endif
+
+#if MODULE_ADDRESS == 11
+#define MODULE_TYPE MODULE_TYPE_DC
 #endif
 
 #ifndef MODULE_TYPE
