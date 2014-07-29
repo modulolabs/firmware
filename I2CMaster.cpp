@@ -2,9 +2,9 @@
 
 // http://codinglab.blogspot.com/2008/10/i2c-on-avr-using-bit-banging.html
 #include "Setup.h"
+#include "Wiring.h"
 #include <avr/io.h>
 #include <avr/delay.h>
-
 
 // Port for the I2C
 #define I2C_DDR DDRB
@@ -27,9 +27,6 @@ I2C_DDR &= ~ (1 << I2C_CLK);
 #define I2C_CLOCK_LO()\
 I2C_DDR |= (1 << I2C_CLK);
 
-void delay(uint8_t duration) {
-	_delay_us(duration);
-}
 
 // Inits bitbanging port, must be called before using the functions below
 //
@@ -41,7 +38,7 @@ void I2C_Init()
 	I2C_CLOCK_HI();
 	I2C_DATA_HI();
 
-	delay(1);
+	delay_us(1);
 }
 
 
@@ -51,13 +48,13 @@ void I2C_Start()
 {
 	// set both to high at the same time
 	I2C_DDR &= ~ ((1 << I2C_DAT) | (1 << I2C_CLK));
-	delay(1);
+	delay_us(1);
 
 	I2C_DATA_LO();
-	delay(1);
+	delay_us(1);
 
 	I2C_CLOCK_LO();
-	delay(1);
+	delay_us(1);
 }
 
 // Send a STOP Condition
@@ -65,13 +62,13 @@ void I2C_Start()
 void I2C_Stop()
 {
 	I2C_DATA_LO();
-	delay(1);
+	delay_us(1);
 	
 	I2C_CLOCK_HI();
-	delay(1);
+	delay_us(1);
 
 	I2C_DATA_HI();
-	delay(1);
+	delay_us(1);
 }
 
 
@@ -85,24 +82,24 @@ void I2C_WriteBit(unsigned char c)
 	{
 		I2C_DATA_LO();
 	}
-	delay(1);
+	delay_us(1);
 	
 	// SDA is not allowed to change while SCL is high
 	I2C_CLOCK_HI();
 	
 	while (!(I2C_PIN & _BV(I2C_CLK))) {
 	}
-	delay(1);
+	delay_us(1);
 	
 	I2C_CLOCK_LO();
-	delay(1);
+	delay_us(1);
 	
 	if (c > 0)
     {
         I2C_DATA_LO();
     }
 
-    delay(1);
+    delay_us(1);
 }
 
 unsigned char I2C_ReadBit()
@@ -113,12 +110,12 @@ unsigned char I2C_ReadBit()
 	
 	while (!(I2C_PIN & _BV(I2C_CLK))) {
 	}
-	delay(1);
+	delay_us(1);
 
 	bool bit = I2C_PIN & _BV(I2C_DAT);
 
 	I2C_CLOCK_LO();
-	delay(1);
+	delay_us(1);
 
 	return bit;
 }
@@ -140,7 +137,7 @@ unsigned char I2C_Write(unsigned char c)
 
 	//I2C_DATA_HI();
 	bool retval = I2C_ReadBit();
-	delay(3);
+	delay_us(3);
 	return retval;
 	//return 0;
 }
@@ -169,7 +166,7 @@ unsigned char I2C_Read(unsigned char ack)
 
 	//I2C_DATA_HI();
 	
-	delay(3);
+	delay_us(3);
 
 	return res;
 }

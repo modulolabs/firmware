@@ -59,5 +59,7 @@ void pinMode(uint8_t, uint8_t);
 #define portModeRegister(P) ( (volatile uint8_t *)( pgm_read_word( port_to_mode_PGM + (P))) )
 
 unsigned long micros();
+void delay(uint16_t duration);
+void delay_us(uint16_t duration);
 
 #endif /* WIRING_H_ */
