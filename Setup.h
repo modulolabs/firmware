@@ -14,7 +14,7 @@
 // For now, we have a fixed set of addresses and we turn
 // on the right module code using ifdefs based on the address
 
-#define MODULE_ADDRESS 7
+#define MODULE_ADDRESS 9
 
 #define MODULE_TYPE_LED 1
 #define MODULE_TYPE_BUTTONS 2
@@ -73,8 +73,5 @@
 #endif
 
 #define F_CPU 8000000UL
-
-void Init();
-uint32_t GetRandomValue();
 
 #endif /* CONFIG_H_ */

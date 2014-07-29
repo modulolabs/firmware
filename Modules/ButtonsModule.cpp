@@ -12,7 +12,9 @@
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_BUTTONS)
 
 #include <avr/io.h>
-#include "TwoWire.h"
+#include "Modulo.h"
+#include "Timer.h"
+#include <util/delay.h>
 
 /*
  * LED - PA0
@@ -22,39 +24,66 @@
  * GPIO5 - PA2
  */
 
-static void _OnDataReceived(uint8_t *data, uint8_t numBytes) {
+#define BUTTON_STATE_REGISTER 0
+#define BUTTON_PRESSED_REGISTER 1
+#define BUTTON_RELEASED_REGISTER 2
 
-}
+DEFINE_MODULO_CONSTANTS("Integer Labs", "NavButtons", 0, "http://www.integerlabs.net/docs/NavButtons");
+DEFINE_MODULO_FUNCTION_NAMES("State,Pressed,Released");
+DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeBitfield8, ModuloDataTypeBitfield8, ModuloDataTypeBitfield8);
 
-static volatile uint8_t steps = 0;
+volatile uint8_t buttonsState;
+volatile uint8_t buttonsPressed;
+volatile uint8_t buttonsReleased;
 
-static void _OnDataRequested(uint8_t *data, uint8_t* numBytes, uint8_t maxLength) {
-	*numBytes = 1;
-	data[0] = steps;
+void _ReadModuloValue(uint8_t functionID, ModuloBuffer *buffer) {
+	switch (functionID) {
+		case BUTTON_STATE_REGISTER:
+			buffer->Set(buttonsState);
+			break;
+		case BUTTON_PRESSED_REGISTER:
+			buffer->Set(buttonsPressed);
+			buttonsPressed = 0;
+			break;
+		case BUTTON_RELEASED_REGISTER:
+			buffer->Set(buttonsReleased);
+			buttonsReleased = 0;
+			break;			
+	}
 }
 
 int main(void)
 {
-	TwoWireInit(MODULE_ADDRESS, _OnDataReceived, _OnDataRequested);
-	Init();
+	TimerInit();
+	ModuloInit(&DDRB, &PORTB, _BV(0),
+	_ReadModuloValue);
 	
-	PUEA = (1 << PINA2);
-	PUEB = (1 << PINB0) | (1 << PINB1) | (1 << PINB2);
+	PUEA = _BV(0) | _BV(1) | _BV(2) | _BV(3) | _BV(7);
 	
 	while(1)
 	{
-		bool button0 = !(PINB & (1 << PINB0));
-		bool button1 = !(PINB & (1 << PINB1));
-		bool button2 = !(PINB & (1 << PINB2));
-		bool button3 = !(PINA & (1 << PINA2));
-		  
-		if (button0 or button1 or button2 or button3) {
-			PORTA |= 1 << PINA0;
-		} else {
-			PORTA &= ~(1 << PINA0);
+		uint8_t newState = (
+			(PINA & _BV(0) ? 0 : _BV(0)) |
+			(PINA & _BV(1) ? 0 : _BV(1)) |
+			(PINA & _BV(2) ? 0 : _BV(2)) |
+			(PINA & _BV(3) ? 0 : _BV(3)) |
+			(PINA & _BV(7) ? 0 : _BV(4)));
+			
+		for (int i=0; i < 5; i++) {
+			uint8_t mask = _BV(i);
+			if ((newState & mask) and !(buttonsState & mask)) {
+				buttonsPressed |= mask;
+			}
+			if (!(newState & mask) and (buttonsState & mask)) {
+				buttonsReleased |= mask;
+			}		
 		}
 		
-		steps = (button3 << 3) | (button2 << 2) | (button1 << 1) | button0;
+		buttonsState = newState;
+		
+		ModuloSetStatus(buttonsState ? ModuloStatusOn : ModuloStatusOff);
+		
+		_delay_ms(1);
 	}
 }
 

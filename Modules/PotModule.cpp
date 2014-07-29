@@ -13,42 +13,31 @@
 #include <avr/io.h>
 #include <avr/delay.h>
 #include <avr/interrupt.h>
-#include "TwoWire.h"
+#include "Modulo.h"
+#include "Timer.h"
 
+ModuloVariable<float> position(0);
 
-/*
-  LED - PA0
-  A   - GPIO 4 - PA3
-  COM - GPIO 3 - PA7
-  B   - GPIO 2 - PB2
-*/
+DEFINE_MODULO_CONSTANTS("Integer Labs", "Potentiometer", 0, "http://www.integerlabs.net");
+DEFINE_MODULO_FUNCTION_NAMES("Position");
+DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeFloat);
 
-static void _OnDataReceived(uint8_t *data, uint8_t numBytes) {
-
+void _ReadModuloValue(uint8_t functionID, ModuloBuffer *buffer) {
+	if (functionID == 0) {
+		buffer->Set(position.Get());
+	}
 }
-
-static volatile uint8_t valueHigh = 0;
-static volatile uint8_t valueLow = 0;
-
-static void _OnDataRequested(uint8_t *data, uint8_t* numBytes, uint8_t maxLength) {
-	*numBytes = 2;
-	data[0] = valueHigh;
-	data[1] = valueLow;
-}
-
-uint8_t previousState = 0;
-
-uint8_t forward[] = {1, 3, 0, 2};
-uint8_t backward[] = {2, 0, 3, 1};
 
 int main(void)
 {
-	TwoWireInit(MODULE_ADDRESS, _OnDataReceived, _OnDataRequested);
-	Init();
+	//TwoWireInit(MODULE_ADDRESS, _OnDataReceived, _OnDataRequested);
+	TimerInit();
+	ModuloInit(&DDRA, &PORTA, _BV(1),
+			_ReadModuloValue);
 	
 	// Enable the LED
-	DDRA |= _BV(1);
-	PORTA |= _BV(1);
+	//DDRA |= _BV(1);
+	//PORTA |= _BV(1);
 	
 	// Enable drive pins
 	DDRB |= _BV(0) | _BV(1);
@@ -59,7 +48,7 @@ int main(void)
 
 	// Configure a timer for the LED
 
-
+#if 0
 	// Non-inverting compare output mode for timer 1 channel B.
 	TCCR1A |= _BV(COM1B1);
 
@@ -75,6 +64,7 @@ int main(void)
 	
 	// Enable the timer clock
 	TCCR1B |= _BV(CS10);
+#endif
 
 	while(1)
 	{
@@ -85,12 +75,16 @@ int main(void)
 		while (ADCSRA & _BV(ADSC)) {
 		}
 		
-		cli();
 		// Must read ADCL before ADCH
-		valueLow  = ADCL;
-		valueHigh = ADCH;
+		uint16_t valueLow  = ADCL;
+		uint16_t valueHigh = ADCH;
 		
 		float floatValue = ((valueHigh << 8) | valueLow)/1023.0;
+		
+		position.Set(floatValue);
+		
+		/*
+		
 
 		// Apply gamma correction for perceived brightness
 		int16_t brightness = (floatValue*floatValue*1023);
@@ -99,8 +93,7 @@ int main(void)
 		// Must write the high byte before the low byte
 		OCR1BH = brightness >> 8;
 		OCR1BL = brightness & 0xFF;
-			
-		sei();
+		*/
 		
 		_delay_ms(1);
 	}
