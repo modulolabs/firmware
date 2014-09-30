@@ -1,8 +1,8 @@
 
 
 // http://codinglab.blogspot.com/2008/10/i2c-on-avr-using-bit-banging.html
-#include "Setup.h"
-#include "Wiring.h"
+#include "Config.h"
+#include "Clock.h"
 #include <avr/io.h>
 #include <avr/delay.h>
 
