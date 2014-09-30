@@ -16,13 +16,16 @@ BSD license, check license.txt for more information
 All text above, and the splash screen below must be included in any redistribution
 *********************************************************************/
 
+#include "Config.h"
+
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "Adafruit_SSD1306.h"
 
+#include "Adafruit_SSD1306.h"
+extern const unsigned char font[] PROGMEM;
 
 
 // initializer for I2C - we only indicate the reset pin!
@@ -37,11 +40,19 @@ Adafruit_SSD1306::Adafruit_SSD1306()  {
 	clkport = &PORTA; // GPIO 0
 	clkpinmask = _BV(3);
 		
+
+	
 	resetport = &PORTB; // GPIO 7
-	resetpinmask = _BV(0);
-		
 	dcport = &PORTB; // GPIO 6
-	dcpinmask = _BV(1);
+
+	bool isAdafruitBoard = false;
+	if (isAdafruitBoard) {
+		resetpinmask = _BV(0);
+		dcpinmask = _BV(1);
+	} else {
+		resetpinmask = _BV(1);
+		dcpinmask = _BV(0);
+	}
 }
   
 
@@ -147,7 +158,7 @@ void Adafruit_SSD1306::begin(bool reset, uint8_t vccstate) {
     if (vccstate == SSD1306_EXTERNALVCC) 
       { ssd1306_command(0x9F); }
     else 
-      { ssd1306_command(0xCF); }
+      { ssd1306_command(0xFF); }
     ssd1306_command(SSD1306_SETPRECHARGE);                  // 0xd9
     if (vccstate == SSD1306_EXTERNALVCC) 
       { ssd1306_command(0x22); }
@@ -182,9 +193,9 @@ void Adafruit_SSD1306::begin(bool reset, uint8_t vccstate) {
     ssd1306_command(0x2);	//ada x12
     ssd1306_command(SSD1306_SETCONTRAST);                   // 0x81
     if (vccstate == SSD1306_EXTERNALVCC) 
-      { ssd1306_command(0x10); }
+      { ssd1306_command(0x10); } // 0x10
     else 
-      { ssd1306_command(0xAF); }
+      { ssd1306_command(0xAF); } // 0xAF
     ssd1306_command(SSD1306_SETPRECHARGE);                  // 0xd9
     if (vccstate == SSD1306_EXTERNALVCC) 
       { ssd1306_command(0x22); }
@@ -292,18 +303,7 @@ void Adafruit_SSD1306::stopscroll(void){
 // Dim the display
 // dim = true: display is dimmed
 // dim = false: display is normal
-void Adafruit_SSD1306::dim(uint8_t dim) {
-  uint8_t contrast;
-
-  if (dim) {
-    contrast = 0; // Dimmed display
-  } else {
-    if (_vccstate == SSD1306_EXTERNALVCC) {
-      contrast = 0x9F;
-    } else {
-      contrast = 0xCF;
-    }
-  }
+void Adafruit_SSD1306::setContract(uint8_t contrast) {
   // the range of contrast to too small to be really useful
   // it is useful to dim the display
   ssd1306_command(SSD1306_SETCONTRAST);
@@ -318,35 +318,46 @@ void Adafruit_SSD1306::ssd1306_data(uint8_t c) {
     *dcport |= dcpinmask;
     //digitalWrite(cs, LOW);
     *csport &= ~cspinmask;
+	
     fastSPIwrite(c);
-    //digitalWrite(cs, HIGH);
+    
+	//digitalWrite(cs, HIGH);
     *csport |= cspinmask;
-
 }
 
-void Adafruit_SSD1306::display(uint8_t val) {
+void Adafruit_SSD1306::BeginSetPixels(int column, int page)
+{
   ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(0);   // Column start address (0 = reset)
+  ssd1306_command(column);   // Column start address (0 = reset)
   ssd1306_command(SSD1306_LCDWIDTH-1); // Column end address (127 = reset)
 
   ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(0); // Page start address (0 = reset)
+  ssd1306_command(page); // Page start address (0 = reset)
   #if SSD1306_LCDHEIGHT == 64
-    ssd1306_command(7); // Page end address
+  ssd1306_command(7); // Page end address
   #endif
   #if SSD1306_LCDHEIGHT == 32
-    ssd1306_command(3); // Page end address
+  ssd1306_command(3); // Page end address
   #endif
   #if SSD1306_LCDHEIGHT == 16
-    ssd1306_command(1); // Page end address
+  ssd1306_command(1); // Page end address
   #endif
 
-    // SPI
-    *csport |= cspinmask;
-    *dcport |= dcpinmask;
-    *csport &= ~cspinmask;
+  // SPI
+  *csport |= cspinmask;
+  *dcport |= dcpinmask;
+  *csport &= ~cspinmask;
+}
 
-#if 1
+void Adafruit_SSD1306::EndSetPixels()
+{
+	*csport |= cspinmask;
+}
+
+void Adafruit_SSD1306::display(uint8_t val) {
+
+
+#if 0
 	for (uint8_t page=0; page < 8; page++) {
 		for (uint8_t x=0; x < SSD1306_LCDWIDTH; x++) {
 			uint8_t data;
@@ -363,7 +374,8 @@ void Adafruit_SSD1306::display(uint8_t val) {
 			fastSPIwrite(data);
 		}
 	}
-#else
+#endif
+#if 0
 
     for (uint16_t i=0; i<(SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8); i++) {
 		//if ( i < SSD1306_LCDWIDTH*1.5) {
@@ -376,11 +388,70 @@ void Adafruit_SSD1306::display(uint8_t val) {
     }
 	
 #endif
+
+	drawChar(0, 0, 'e', 0, 0, 1);
+	drawChar(0, 0, 'k', 0, 0, 1);
+	drawChar(0, 0, 't', 0, 0, 1);
+	drawChar(0, 0, ' ', 0, 0, 1);
+	drawChar(0, 0, 'w', 0, 0, 1);
+	drawChar(0, 0, 'a', 0, 0, 1);
+	drawChar(0, 0, 's', 0, 0, 1);
+	drawChar(0, 0, ' ', 0, 0, 1);
+	drawChar(0, 0, 'h', 0, 0, 1);
+	drawChar(0, 0, 'e', 0, 0, 1);
+	drawChar(0, 0, 'r', 0, 0, 1);
+	drawChar(0, 0, 'e', 0, 0, 1);
+	drawChar(0, 0, '!', 0, 0, 1);
 	
     *csport |= cspinmask;
 }
 
-inline void Adafruit_SSD1306::fastSPIwrite(uint8_t d) {
+void Adafruit_SSD1306::clear() {
+	BeginSetPixels(0,0);
+
+
+	for (int i=0; i < 128*8; i++) {
+		fastSPIwrite(0);
+	}
+
+    EndSetPixels();
+}
+
+// Draw a character
+void Adafruit_SSD1306::drawChar(int16_t x, int16_t y, unsigned char c,
+	uint16_t color, uint16_t bg, uint8_t size) {
+	BeginSetPixels(6*x+1, y);
+
+	for (int i=0; i<6; i++ ) {
+		uint8_t line;
+		if (i == 5)
+			line = 0x0;
+		else
+			line = pgm_read_byte(font+(c*5)+i);
+		
+		fastSPIwrite(line);
+	}
+
+    EndSetPixels();
+}
+
+void Adafruit_SSD1306::drawString(int x, int y, const char *s)
+{
+	uint8_t line;
+	BeginSetPixels(6*x+1, y);
+	for (int i=0; s[i] != 0 and i+x < 21; i++) {
+		for (int j=0; j<6; j++ ) {
+			if (j == 5)
+				line = 0x0;
+			else
+				line = pgm_read_byte(font+(s[i]*5)+j);
+			fastSPIwrite(line);
+		}
+	}
+	EndSetPixels();	
+}
+
+void Adafruit_SSD1306::fastSPIwrite(uint8_t d) {
 	SPDR = d;
 	while (!(SPSR & _BV(SPIF))) {
 	}

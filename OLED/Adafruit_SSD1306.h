@@ -17,20 +17,6 @@ All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
 
 
-
-#ifdef __SAM3X8E__
- typedef volatile RwReg PortReg;
- typedef uint32_t PortMask;
-#else
-  typedef volatile uint8_t PortReg;
-  typedef uint8_t PortMask;
-#endif
-
-
-#define BLACK 0
-#define WHITE 1
-#define INVERSE 2
-
 #define SSD1306_I2C_ADDRESS   0x3C	// 011110+SA0+RW - 0x3C or 0x3D
 // Address for 128x32 is 0x3C
 // Address for 128x64 is 0x3D (default) or 0x3C (if SA0 is grounded)
@@ -138,14 +124,25 @@ class Adafruit_SSD1306 {
 	void startscrolldiagleft(uint8_t start, uint8_t stop);
 	void stopscroll(void);
 
-	void dim(uint8_t contrast);
+	void setContract(uint8_t contrast);
 
+	void clear();
+	
+	// Draw a character
+	void drawChar(int16_t x, int16_t y, unsigned char c,
+		uint16_t color=0, uint16_t bg=0, uint8_t size=1);
+	void drawString(int x, int y, const char *s);
 
+	void BeginSetPixels(int column, int page);
+	void EndSetPixels();
+
+	void fastSPIwrite(uint8_t c);	
  private:
-	void fastSPIwrite(uint8_t c);
+
+
 
 	uint8_t _vccstate;
 	bool hwSPI;
-	PortReg *mosiport, *clkport, *csport, *dcport, *resetport;
-	PortMask mosipinmask, clkpinmask, cspinmask, dcpinmask, resetpinmask;
+	volatile uint8_t *mosiport, *clkport, *csport, *dcport, *resetport;
+	uint8_t mosipinmask, clkpinmask, cspinmask, dcpinmask, resetpinmask;
 };
