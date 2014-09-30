@@ -1,14 +1,15 @@
 /*
- * DCModule.cpp
+ * StepperModule.cpp
  *
- * Created: 6/27/2014 10:55:16 AM
+ * Created: 8/5/2014 11:33:26 AM
  *  Author: ekt
  */ 
 
 
+
 #include "Config.h"
 
-#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_DC)
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_STEPPER)
 
 #include <avr/io.h>
 #include <avr/delay.h>
@@ -18,47 +19,38 @@
 #include "Clock.h"
 
 DEFINE_MODULO_CONSTANTS("Integer Labs", "Driver", 0, "http://www.integerlabs.net/docs/NavButtons");
-DEFINE_MODULO_FUNCTION_NAMES("State,Pressed,Released");
-DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeBitfield8, ModuloDataTypeBitfield8, ModuloDataTypeBitfield8);
-
-
-/*
-  LED - PA0
-  A   - GPIO 4 - PA3
-  COM - GPIO 3 - PA7
-  B   - GPIO 2 - PB2
-*/
-
-static void _OnDataReceived(uint8_t *data, uint8_t numBytes) {
-
-}
-
-
-
-static void _OnDataRequested(uint8_t *data, uint8_t* numBytes, uint8_t maxLength) {
-
-}
+DEFINE_MODULO_FUNCTION_NAMES("Speed,Steps");
+DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeInt16, ModuloDataTypeInt16);
 
 PWM pwm1(1);
 
-	volatile uint8_t *in1Port = &PORTA;
-	volatile uint8_t *in2Port = &PORTA;
-	volatile uint8_t *in3Port = &PORTA;
-	volatile uint8_t *in4Port = &PORTB;
-	volatile uint8_t *en1Port = &PORTA;
-	volatile uint8_t *en2Port = &PORTA;
-	volatile uint8_t *en3Port = &PORTB;
-	volatile uint8_t *en4Port = &PORTB;
+volatile uint8_t *in1Port = &PORTA;
+volatile uint8_t *in2Port = &PORTA;
+volatile uint8_t *in3Port = &PORTA;
+volatile uint8_t *in4Port = &PORTB;
+volatile uint8_t *en1Port = &PORTA;
+volatile uint8_t *en2Port = &PORTA;
+volatile uint8_t *en3Port = &PORTB;
+volatile uint8_t *en4Port = &PORTB;
 	
-	uint8_t in1Mask = _BV(0);
-	uint8_t in2Mask = _BV(2);
-	uint8_t in3Mask = _BV(7);
-	uint8_t in4Mask = _BV(1);
-	uint8_t en1Mask = _BV(1);
-	uint8_t en2Mask = _BV(3);
-	uint8_t en3Mask = _BV(2);
-	uint8_t en4Mask = _BV(0);
-	
+uint8_t in1Mask = _BV(0);
+uint8_t in2Mask = _BV(2);
+uint8_t in3Mask = _BV(7);
+uint8_t in4Mask = _BV(1);
+uint8_t en1Mask = _BV(1);
+uint8_t en2Mask = _BV(3);
+uint8_t en3Mask = _BV(2);
+uint8_t en4Mask = _BV(0);
+
+float stepsPerRevolution = 200;
+float stepperSpeed = 10; // RPM
+float stepperRotationRequested = 1e9;
+float stepperRotationCompleted = 0;
+float power = 1;
+
+float stepperPhase = 0;  // radians
+unsigned long lastUpdateTime = 0;
+
 void InitStepper() {
 	pwm1.EnableOutputCompare(2);
 	pwm1.EnableOutputCompare(7);	
@@ -66,11 +58,11 @@ void InitStepper() {
 
 void SetCoilA(float amount) {
 	if (amount > 0) {
-		pwm1.SetEvenDutyCycle(amount);
+		pwm1.SetEvenDutyCycle(power*amount);
 		*in1Port |=  in1Mask;
 		*in2Port &= ~in2Mask;
 	} else {
-		pwm1.SetEvenDutyCycle(-amount);
+		pwm1.SetEvenDutyCycle(power*-amount);
 		*in1Port &= ~in1Mask;
 		*in2Port |=  in2Mask;		
 	}
@@ -78,23 +70,18 @@ void SetCoilA(float amount) {
 
 void SetCoilB(float amount) {
 	if (amount > 0) {
-		pwm1.SetOddDutyCycle(amount);
+		pwm1.SetOddDutyCycle(power*amount);
 		*in3Port |=  in3Mask;
 		*in4Port &= ~in4Mask;
 	} else {
-		pwm1.SetOddDutyCycle(-amount);
+		pwm1.SetOddDutyCycle(power*-amount);
 		*in3Port &= ~in3Mask;
 		*in4Port |=  in4Mask;		
 	}
 }
 
 
-float stepsPerRevolution = 200;
-float stepperSpeed = 10; // RPM
-float stepperPhase = 0;  // radians
-unsigned long lastUpdateTime = 0;
-float stepperRotationRequested = 1e9;
-float stepperRotationCompleted = 0;
+
 
 void UpdateStepper() {
 	// dt is the number of seconds that have elapsed since the last update.
