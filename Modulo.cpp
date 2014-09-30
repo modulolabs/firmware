@@ -7,10 +7,13 @@
 #if 1
 
 #include "Modulo.h"
-#include "Setup.h"
+#include "Config.h"
+#include "Random.h"
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/boot.h>
+#include <avr/eeprom.h>
 
 static uint8_t currentFunction = 0;
 static ModuloDataType currentDataType = ModuloDataTypeNone;
@@ -23,7 +26,7 @@ static volatile uint8_t *_statusPort = &PORTA;
 static volatile uint8_t _statusMask = _BV(1);
 static uint8_t _statusCounter = 0;
 static uint16_t _statusBreathe = 0;
-
+static volatile uint8_t _deviceAddress = 0;
 
 volatile ModuloReadValueCallback _readValueCallback = 0;
 volatile ModuloWriteValueCallback _writeValueCallback = 0;
@@ -35,6 +38,28 @@ volatile ModuloEndWriteArrayCallback _endWriteArrayCallback = 0;
 volatile ModuloBeginReadArrayCallback _beginReadArrayCallback = 0;
 volatile ModuloReadArrayDataCallback _readArrayDataCallback = 0;
 volatile ModuloEndReadArrayCallback _endReadArrayCallback = 0;
+
+volatile uint16_t _deviceID = 0xFFFF;
+
+uint16_t ModuloGetDeviceID() {
+	// If _deviceID has been initialized, return it
+	if (_deviceID != 0xFFFF) {
+		return _deviceID;
+	}
+	
+	// Load the device ID from EEPROM.
+	_deviceID = eeprom_read_word(0);
+	
+	// If nothing was stored in the EEPROM, then
+	// generate a random device id.
+	while (_deviceID == 0xFFFF) {
+		uint32_t r = GenerateRandomNumber();
+		_deviceID = r ^ (r >> 16); // xor the low and high words to conserve entropy
+		eeprom_write_word(0, _deviceID);
+	}
+	
+	return _deviceID;
+}
 
 void ModuloInit(
 	volatile uint8_t *statusDDR,
@@ -66,11 +91,18 @@ void ModuloInit(
 		*_statusDDR |= _statusMask;
 	}
 	
+	// Ensure that we have a valid device id
+	ModuloGetDeviceID();
+	
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
 	TWSCRA = (1 << TWDIE) | (1 << TWASIE) | (1 << TWEN) | (1 << TWSIE);
 
 	// TWAA? (Acknowledge Action)
 	TWSA = (MODULE_ADDRESS << 1);
+	
+	// Also listen for message on address 97, which is the smbus default address
+	uint8_t smbusDefaultAddress = 97;
+	TWSAM = (smbusDefaultAddress << 1) | 1;
 }
 
 void ModuloSetStatus(ModuloStatus status) {
@@ -79,7 +111,7 @@ void ModuloSetStatus(ModuloStatus status) {
 
 
 void ModuloUpdateStatusLED() {
-	if (!_statusMask or !_statusPort or !_statusDDR == 0) {
+	if (!_statusMask or !_statusPort or !_statusDDR) {
 		return;
 	}
 	switch(_status) {
@@ -158,6 +190,7 @@ ModuloDataType _GetDataType(uint8_t function) {
 			return ModuloDataTypeString;
 
 		case MODULO_REGISTER_DEVICE_VERSION:
+		case MODULO_REGISTER_ASSIGN_ADDRESS:
 			return ModuloDataTypeUInt8;
 		case MODULO_REGISTER_DEVICE_ID:
 		case MODULO_REGISTER_SERIAL_NUMBER:
@@ -168,9 +201,11 @@ ModuloDataType _GetDataType(uint8_t function) {
 			return ModuloDataTypeString;
 		
 		case MODULO_REGISTER_STATUS_LED:
+		case MODULO_REGISTER_START_ENUMERATION:
 			return ModuloDataTypeBool;
-			
-
+		case MODULO_REGISTER_ENUMERATE_NEXT_DEVICE:
+		case MODULO_REGISTER_ASSIGN_DEVICE_ID:
+			return ModuloDataTypeUInt16;
 	}
 	
 	return ModuloDataTypeNone;
@@ -184,13 +219,39 @@ static void SetCurrentFunction(uint8_t f) {
 	buffer.Reset();
 }
 
-static void _WriteValue(uint8_t function, ModuloDataType dataType, const ModuloBuffer &buffer) {
-	if (function == MODULO_REGISTER_DEVICE_ID) {
-		// XXX: Set the device ID
-		return;
+
+
+void _StartEnumeration() {
+	_deviceAddress = 0;
+
+}
+
+static int16_t _deviceIDToAssign;
+
+void _AssignAddress(uint8_t address) {
+	if (_deviceIDToAssign == MODULE_ADDRESS) {
+		_deviceAddress = address;
 	}
-	if (function == MODULO_REGISTER_STATUS_LED) {
-		_status = (ModuloStatus)buffer.Get<uint8_t>();
+}
+
+static void _WriteValue(uint8_t function, ModuloDataType dataType, const ModuloBuffer &buffer) {
+	switch (function) {
+		case MODULO_REGISTER_DEVICE_ID:
+			// XXX: Set the device ID
+			return;
+		case MODULO_REGISTER_STATUS_LED:
+			_status = (ModuloStatus)buffer.Get<uint8_t>();
+			return;
+		case MODULO_REGISTER_START_ENUMERATION:
+			_StartEnumeration();
+			return;
+		case MODULO_REGISTER_ASSIGN_DEVICE_ID:
+			_deviceIDToAssign = buffer.Get<uint16_t>();
+			asm("nop");
+			return;
+		case MODULO_REGISTER_ASSIGN_ADDRESS:
+			_AssignAddress(buffer.Get<uint8_t>());
+			return;
 	}
 	
 	if (_writeValueCallback) {
@@ -198,22 +259,26 @@ static void _WriteValue(uint8_t function, ModuloDataType dataType, const ModuloB
 	}
 }
 
-uint8_t _ReadDeviceSignatureImprintTable(uint8_t address)
+#define SIGRD 5
+uint8_t _ReadSignatureByte(uint8_t addr)
 {
+	return (__extension__({ \
+		uint8_t __result; \
+		__asm__ __volatile__ \
+		( \
+		"sts %1, %2\n\t" \
+		"lpm %0, Z" "\n\t" \
+		: "=r" (__result) \
+		: "i" (_SFR_MEM_ADDR(__SPM_REG)), \
+		"r" ((uint8_t)(__BOOT_SIGROW_READ)), \
+		"z" ((uint16_t)(addr)) \
+		); \
+		__result; \
+	}));
+#if 0
+	
 	uint8_t mask = (1<<RSIG)|(1<<SPMEN);
     uint8_t result=0;
-	/*
-    asm
-    (
-		"out %[spmcsr], %[mask]\n\t"
-         "lpm %[result], Z\n\t"
-        : [result] "=r" (result)
-        : "z" (address),
-		  [mask] "a" (mask), 
-		  [spmcsr] "I" (_SFR_IO_ADDR(SPMCSR))
-		: "r16"
-    );
-	*/
 	asm(
 	"out %[spmcsr], %[mask]\n\t"
 	"lpm %[result], Z\n\t"
@@ -223,51 +288,62 @@ uint8_t _ReadDeviceSignatureImprintTable(uint8_t address)
 	  [spmcsr] "M" (_SFR_IO_ADDR(SPMCSR))
 	);
     return result;
+#endif
 }
-
-uint8_t ReadSignatureByte(uint16_t Address) { 
-  //NVM_CMD = NVM_CMD_READ_CALIB_ROW_gc; 
-  uint8_t Result;
-  SPMCSR = (1<<RSIG)|(1<<SPMEN);
-  __asm__ ("lpm %0, Z\n" : "=r" (Result) : "z" (Address)); 
-//  __asm__ ("lpm \n  mov %0, r0 \n" : "=r" (Result) : "z" (Address) : "r0"); 
-  //NVM_CMD = NVM_CMD_NO_OPERATION_gc; 
-  return Result; 
-} 
-
 
 
 uint32_t ModuloGetSerialNumber() {
-	return _ReadDeviceSignatureImprintTable(0); // Byte address of the lot number in the device signature table
+	volatile unsigned char sigTable[48];
+	for (int i=0; i < 48; i++) {
+		sigTable[i] = _ReadSignatureByte(i);
+	}
+	
+	volatile uint8_t osctcal0a = OSCTCAL0A;
+	volatile uint8_t osctcal0b = OSCTCAL0B;
+	volatile uint8_t osctcal0 = OSCCAL0;
+	volatile uint8_t osctcal1 = OSCCAL1;
+
+	volatile uint8_t y = _ReadSignatureByte(0x2C); // Byte address of the lot number in the device signature table
+	asm("nop");
+	return y;
 }
 
 uint32_t ModuloGetLotNumber() {
-	return _ReadDeviceSignatureImprintTable(1);//_ReadDeviceSignatureImprintTable(1); // Byte address of the lot number in the device signature table
+	volatile uint8_t x = OSCTCAL0B;
+	volatile uint8_t y = _ReadSignatureByte(0x2D); // Byte address of the lot number in the device signature table
+	return x;
 }
 
 
-static void _ReadValue(uint8_t function, ModuloDataType dataType, ModuloBuffer *buffer) {
+static bool _ReadValue(uint8_t function, ModuloDataType dataType, ModuloBuffer *buffer) {
 	
 	if (function >= 200) {
 		switch(function) {
 			case MODULO_REGISTER_DEVICE_VERSION:
 				buffer->Set(ModuloDeviceVersion);
-				break;
+				return true;
 			case MODULO_REGISTER_STATUS_LED:
 				buffer->Set(_status);
-				break;
+				return true;
  			case MODULO_REGISTER_LOT_NUMBER:
 				buffer->Set(ModuloGetLotNumber());
-				break;
+				return true;
 			case MODULO_REGISTER_SERIAL_NUMBER:
 				buffer->Set(ModuloGetSerialNumber());
-				break;
+				return true;
+			case MODULO_REGISTER_ENUMERATE_NEXT_DEVICE:
+				if (_deviceAddress != 0) {
+					return false;
+				}
+				buffer->Set((uint16_t)MODULE_ADDRESS);
+				return true;
 		}
-		return;
+		return false;
 	}
 	
 	if (_readValueCallback) {
 		(*_readValueCallback)(function, buffer);
+		return true;
 	}
 }
 
@@ -331,11 +407,15 @@ static uint8_t _ReadArrayData(uint8_t functionID, uint8_t index) {
 }
 
 // Handlers for specific events. These are called directly from the interrupt service routine.
-static void OnAddressReceived(bool isReadOperation) {
+static bool OnAddressReceived(bool isReadOperation) {
 	currentByte = 0;
 	if (!isReadOperation) {
 		currentFunction = MODULO_INVALID_REGISTER;
 	}
+	if (isReadOperation and currentFunction == MODULO_REGISTER_ENUMERATE_NEXT_DEVICE and _deviceAddress != 0) {
+		return false;
+	}
+	return true;
 }
 
 static void OnWriteByte(uint8_t data) {
@@ -347,7 +427,7 @@ static void OnWriteByte(uint8_t data) {
 			arrayLength = data;
 			_BeginWriteArray(currentFunction, arrayLength);
 		} else {
-			//_WriteArrayData(currentFunction, currentByte++, data);
+			_WriteArrayData(currentFunction, currentByte++, data);
 		}
 		if(currentByte == arrayLength) {
 			_EndWriteArray(currentFunction);
@@ -363,7 +443,7 @@ static void OnWriteByte(uint8_t data) {
 	}
 }
 
-static uint8_t OnReadByte() {
+bool OnReadByte(uint8_t *retval) {
 	if (currentFunction == MODULO_INVALID_REGISTER) {
 		// Error. Read with no command set.
 		return 0;
@@ -373,29 +453,32 @@ static uint8_t OnReadByte() {
 		if (arrayLength < 0) {
 			arrayLength = _BeginReadArray(currentFunction);
 			currentByte = 0;
-			return arrayLength;
+			*retval = arrayLength;
+			return true;
 		}
 		if (currentByte < arrayLength) {
-			return _ReadArrayData(currentFunction, currentByte++);
+			*retval = _ReadArrayData(currentFunction, currentByte++);
+			return true;
 		}
-		return 0;
+		return false;
 	} else {
 		if (currentByte == 0) {
-			_ReadValue(currentFunction, currentDataType, &buffer);
+			if (!_ReadValue(currentFunction, currentDataType, &buffer)) {
+				return false;
+			}
 		}
-	
-		uint8_t retval = 0;
 		
 		if (currentByte < _GetNumBytes(currentDataType)) {
-			retval = buffer.data[currentByte];
+			*retval = buffer.data[currentByte];
 			currentByte++;
+			return true;
 		}
 		
 		//if (currentByte == _GetNumBytes(currentDataType)) {
 		//	SetCurrentFunction(currentFunction+1);
 		//}
 	
-		return retval;
+		return false;
 	}
 }
 
@@ -406,47 +489,66 @@ static void OnStop() {
 }
 
 
+static void _Acknowledge(bool ack, bool complete) {
+	if (ack) {
+		TWSCRB &= ~_BV(TWAA);
+	} else {
+		TWSCRB |= _BV(TWAA);
+	}
+	
+	TWSCRB |= _BV(1) | !complete;
+}
+
 // The interrupt service routine. Examine registers and dispatch to the handlers above.
 
 ISR(TWI_SLAVE_vect)
 {
-	bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
-	bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
-	bool clockHold = (TWSSRA & _BV(TWCH));
-	bool receiveAck = (TWSSRA & _BV(TWRA));
-	bool collision = (TWSSRA & _BV(TWC));
-	bool busError = (TWSSRA & _BV(TWBE));
-	bool isReadOperation = (TWSSRA & (1 << TWDIR));
-	bool addressReceived = (TWSSRA & (1 << TWAS)); // Check if we received an address and not a stop
+	
+	volatile bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
+	volatile bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
+	volatile bool clockHold = (TWSSRA & _BV(TWCH));
+	volatile bool receiveAck = (TWSSRA & _BV(TWRA));
+	volatile bool collision = (TWSSRA & _BV(TWC));
+	volatile bool busError = (TWSSRA & _BV(TWBE));
+	volatile bool isReadOperation = (TWSSRA & (1 << TWDIR));
+	volatile bool addressReceived = (TWSSRA & (1 << TWAS)); // Check if we received an address and not a stop
 	
 	if (isAddressOrStop) {
 		//TWSCRB |= (1 << TWCMD0) | (1 << TWCMD1);
 		//TWSSRA &= ~(1 << TWASIF);
-		
 
 		if (addressReceived) {
-			TWSCRB &= ~_BV(TWAA);
-			TWSCRB |= 3;
 			
-			OnAddressReceived(isReadOperation);
+			//TWSCRB &= ~_BV(TWAA);
+			//TWSCRB |= 3;
+			
+			bool ack = OnAddressReceived(isReadOperation);
+			
+			_Acknowledge(ack /*ack*/, !ack /*complete*/);
 		} else {
-			TWSCRB |= 2;
-			
+			//TWSCRB |= 2;
+			_Acknowledge(true /*ack*/, true /*complete*/);
 			OnStop();
 		}
 	}
 
 	if (dataInterruptFlag) {
 		if (isReadOperation) {
-			uint8_t data = OnReadByte();
-			TWSD = data;
-			TWSCRB |= 3;
-			return;
+			uint8_t data = 0;
+			bool ack = OnReadByte(&data);
+			if (ack) {
+				TWSD = data;
+			} else {
+				asm("nop");
+			}
+			_Acknowledge(ack /*ack*/, !ack /*complete*/);
+			//TWSCRB |= 3;
 		} else {
 			uint8_t data = TWSD;
 			OnWriteByte(data);
-			TWSCRB |= 3;
-			return;
+			
+			_Acknowledge(true /*ack*/, false /*complete*/);
+			//TWSCRB |= 3;
 		}
 	}
 

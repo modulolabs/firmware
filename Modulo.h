@@ -134,6 +134,10 @@ private:
 #define MODULO_REGISTER_STATUS_LED 207
 #define MODULO_REGISTER_LOT_NUMBER 208
 #define MODULO_REGISTER_SERIAL_NUMBER 209
+#define MODULO_REGISTER_START_ENUMERATION 250
+#define MODULO_REGISTER_ENUMERATE_NEXT_DEVICE 252
+#define MODULO_REGISTER_ASSIGN_DEVICE_ID 253
+#define MODULO_REGISTER_ASSIGN_ADDRESS 254
 #define MODULO_INVALID_REGISTER 255
 
 extern const char ModuloCompanyName[];
@@ -155,6 +159,7 @@ extern const ModuloDataType ModuloDataTypes[];
 #define DEFINE_MODULO_FUNCTION_TYPES(...) \
     const ModuloDataType ModuloDataTypes[] = {__VA_ARGS__, ModuloDataTypeNone};
 
+uint16_t ModuloGetDeviceID();
 
 
 #endif /* MODULO_H_ */
