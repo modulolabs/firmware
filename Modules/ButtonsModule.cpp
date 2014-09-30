@@ -7,13 +7,13 @@
 
 
 
-#include "Setup.h"
+#include "Config.h"
 
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_BUTTONS)
 
 #include <avr/io.h>
 #include "Modulo.h"
-#include "Timer.h"
+#include "Clock.h"
 #include <util/delay.h>
 
 /*
@@ -54,7 +54,7 @@ void _ReadModuloValue(uint8_t functionID, ModuloBuffer *buffer) {
 
 int main(void)
 {
-	TimerInit();
+	ClockInit();
 	ModuloInit(&DDRB, &PORTB, _BV(0),
 	_ReadModuloValue);
 	

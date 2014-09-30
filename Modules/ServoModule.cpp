@@ -14,7 +14,7 @@
 
 
 
-#include "Setup.h"
+#include "Config.h"
 
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_SERVO)
 

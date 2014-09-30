@@ -19,7 +19,7 @@
 #ifndef ADAFRUIT_NEOPIXEL_H
 #define ADAFRUIT_NEOPIXEL_H
 
-#include "Setup.h"
+#include "Config.h"
 #include <inttypes.h>
 
 // 'type' flags for LED pixels (third parameter to constructor):

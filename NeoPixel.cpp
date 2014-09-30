@@ -32,7 +32,7 @@
   -------------------------------------------------------------------------*/
 
 #include "NeoPixel.h"
-#include "Wiring.h"
+#include "Clock.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
