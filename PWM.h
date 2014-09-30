@@ -51,6 +51,8 @@ public:
 	// Disabled the output compare for the specified channel.
 	void DisableOutputCompare(uint8_t channel);
 	
+	void SetOutputCompareEnable(uint8_t channel, bool enabled);
+	
 private:
 	// Set the clock select bits for this timer.
 	void _SetClockSelect(ClockSelect cs);

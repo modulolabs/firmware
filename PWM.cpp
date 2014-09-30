@@ -5,7 +5,8 @@
  *  Author: ekt
  */ 
 #include "PWM.h"
-#include "Setup.h"
+#include "Clock.h"
+#include "Config.h"
 #include <stdio.h>
 #include <math.h>
 #include <avr/sfr_defs.h>
@@ -87,6 +88,15 @@ void PWM::EnableOutputCompare(uint8_t output) {
 
 void PWM::DisableOutputCompare(uint8_t output) {
 	TOCPMCOE &= ~_BV(_timerNum);
+}
+
+void PWM::SetOutputCompareEnable(uint8_t channel, bool enabled)
+{
+	if (enabled) {
+		EnableOutputCompare(channel);
+	} else {
+		DisableOutputCompare(channel);
+	}
 }
 
 void PWM::_SetTop(uint16_t value) {
