@@ -1,172 +1,148 @@
-
-
-// http://codinglab.blogspot.com/2008/10/i2c-on-avr-using-bit-banging.html
 #include "Config.h"
 #include "Clock.h"
+#include "I2CMaster.h"
 #include <avr/io.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 
 // Port for the I2C
-#define I2C_DDR DDRB
-#define I2C_PIN PINB
-#define I2C_PORT PORTB
-
-// Pins to be used in the bit banging
-#define I2C_CLK 0
-#define I2C_DAT 1
-
-#define I2C_DATA_HI()\
-I2C_DDR &= ~ (1 << I2C_DAT);
-
-#define I2C_DATA_LO()\
-I2C_DDR |= (1 << I2C_DAT);
-
-#define I2C_CLOCK_HI()\
-I2C_DDR &= ~ (1 << I2C_CLK);
-
-#define I2C_CLOCK_LO()\
-I2C_DDR |= (1 << I2C_CLK);
+static uint8_t _sdaMask = 0;
+static volatile uint8_t* _sdaPORT;
+static volatile uint8_t* _sdaDDR;
+static volatile uint8_t* _sdaPIN;
 
 
-// Inits bitbanging port, must be called before using the functions below
-//
-void I2C_Init()
-{
-	PUEB |= _BV(0) | _BV(1);
-	I2C_PORT &= ~ ((1 << I2C_DAT) | (1 << I2C_CLK));
+static uint8_t _sclMask = 0;
+static volatile uint8_t* _sclPORT;
+static volatile uint8_t* _sclDDR;
+static volatile uint8_t* _sclPIN;
 
-	I2C_CLOCK_HI();
-	I2C_DATA_HI();
+#define SDA_HIGH() (*_sdaDDR &= ~_sdaMask)
+#define SDA_LOW() (*_sdaDDR |= _sdaMask);
+#define SCL_HIGH() (*_sclDDR &= ~_sclMask)
+#define SCL_LOW() (*_sclDDR |= _sclMask);
 
-	delay_us(1);
+static void _start();
+static bool _readBit();
+static void _writeBit(bool bit);
+
+void I2CInit(volatile uint8_t *sdaPORT, volatile uint8_t *sdaDDR, volatile uint8_t *sdaPIN, uint8_t sdaPin,
+             volatile uint8_t *sclPORT, volatile uint8_t *sclDDR, volatile uint8_t *sclPIN, uint8_t sclPin) {
+
+    // On the uCs we use, DDRX and PINX come right after PORTX in the register map
+    // If we use some other uC, we need to check this.
+    _sdaPORT = sdaPORT;
+    _sdaDDR = sdaDDR;
+    _sdaPIN = sdaPIN;
+
+    _sclPORT = sclPORT;
+    _sclDDR = sclDDR;
+    _sclPIN = sclPIN;
+
+    _sdaMask = _BV(sdaPin);
+    _sclMask = _BV(sclPin);
+
+    // Set the outputs low when DDR is enabled
+    *_sdaPORT &= ~_sdaMask;
+    *_sclPORT &= ~_sclMask;
+
+    SDA_HIGH();
+    SCL_HIGH();
 }
 
 
-// Send a START Condition
-//
-void I2C_Start()
-{
-	// set both to high at the same time
-	I2C_DDR &= ~ ((1 << I2C_DAT) | (1 << I2C_CLK));
-	delay_us(1);
-
-	I2C_DATA_LO();
-	delay_us(1);
-
-	I2C_CLOCK_LO();
-	delay_us(1);
+bool I2CBegin(uint8_t address, bool read) {
+    _start();
+    return I2CWrite(address << 1 | read);
 }
 
-// Send a STOP Condition
-//
-void I2C_Stop()
-{
-	I2C_DATA_LO();
-	delay_us(1);
-	
-	I2C_CLOCK_HI();
-	delay_us(1);
-
-	I2C_DATA_HI();
-	delay_us(1);
-}
-
-
-void I2C_WriteBit(unsigned char c)
-{
-	if (c > 0)
-	{
-		I2C_DATA_HI();
-	}
-	else
-	{
-		I2C_DATA_LO();
-	}
-	delay_us(1);
-	
-	// SDA is not allowed to change while SCL is high
-	I2C_CLOCK_HI();
-	
-	while (!(I2C_PIN & _BV(I2C_CLK))) {
-	}
-	delay_us(1);
-	
-	I2C_CLOCK_LO();
-	delay_us(1);
-	
-	if (c > 0)
+bool I2CWrite(uint8_t c) {
+    for (char i = 0; i < 8; i++)
     {
-        I2C_DATA_LO();
+        _writeBit(c & 128);
+
+        c <<= 1;
     }
 
-    delay_us(1);
+
+    return _readBit();
 }
 
-unsigned char I2C_ReadBit()
-{
-	I2C_DATA_HI();
+
+uint8_t I2CRead(bool ack) {
+    uint8_t result = 0;
+
+    for (char i = 0; i < 8; i++)
+    {
+        result <<= 1;
+        result |= _readBit();
+    }
+
+    _writeBit(!ack);
+
+    return result;
+}
+
+
+void I2CStop() {
+    // Expects SCL low, SDA indeterminate
+
+    // First ensure SDA is low
+    SDA_LOW();
+
+    // Rising SCL when SDA low indicates stop condition
+    SCL_HIGH();
+
+    // Release SDA
+    SDA_HIGH();
+}
+
+
+static void _start() {
+    // Expects SDA and SCL high
+
+    // Falling SCL when SDA is low indicates stop condition
+    SDA_LOW();
+    SCL_LOW();
+}
+
+static void _writeBit(bool bit) {
+    // Expects SCL low
+    // SDA can only change while SCL is low
+
+    if (bit) {
+        SDA_HIGH();
+    } else {
+        SDA_LOW();
+    }
 	
-	I2C_CLOCK_HI();
+    SCL_HIGH();
+
+    // Wait for SCL to go high
+    //while (!((*_sclPIN) & _sclMask)) {
+    //}
+
+    SCL_LOW();
+
+    // Leaves SCL low, SDA indeterminate
+}
+
+static bool _readBit() {
+    // Expects SCL low
+    // SDA can only change while SCL is low
+
+    // Ensure that we have released SDA
+    SDA_HIGH();
 	
-	while (!(I2C_PIN & _BV(I2C_CLK))) {
-	}
-	delay_us(1);
+    SCL_HIGH();
 
-	bool bit = I2C_PIN & _BV(I2C_DAT);
+    // Wait for clock stretching
+	//while (!(*_sclPIN & _sclMask)) {
+	//}
 
-	I2C_CLOCK_LO();
-	delay_us(1);
+	bool bit = *_sdaPIN & _sdaMask;
 
+    SCL_LOW();
+
+    // Leaves SCL low, SDA high
 	return bit;
-}
-
-
-
-
-
-// write a byte to the I2C slave device
-//
-unsigned char I2C_Write(unsigned char c)
-{
-	for (char i = 0; i < 8; i++)
-	{
-		I2C_WriteBit(c & 128);
-
-		c <<= 1;
-	}
-
-	//I2C_DATA_HI();
-	bool retval = I2C_ReadBit();
-	delay_us(3);
-	return retval;
-	//return 0;
-}
-
-
-// read a byte from the I2C slave device
-//
-unsigned char I2C_Read(unsigned char ack)
-{
-	unsigned char res = 0;
-
-	for (char i = 0; i < 8; i++)
-	{
-		res <<= 1;
-		res |= I2C_ReadBit();
-	}
-
-	if (ack > 0)
-	{
-		I2C_WriteBit(0);
-	}
-	else
-	{
-		I2C_WriteBit(1);
-	}
-
-	//I2C_DATA_HI();
-	
-	delay_us(3);
-
-	return res;
 }
