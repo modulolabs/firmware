@@ -12,6 +12,8 @@
 #include <avr/sfr_defs.h>
 #include <avr/io.h>
 
+#if defined(CPU_TINYX41)
+
 PWM::PWM(uint8_t timerNum) :
 	_timerNum(timerNum),_topValue(0), _evenDutyCycle(0), _oddDutyCycle(0)
 {
@@ -197,3 +199,5 @@ void PWM::SetOddDutyCycle(float dutyCycle) {
 	
 	_SetOddCompareValue(_oddDutyCycle * _topValue);	
 }
+
+#endif

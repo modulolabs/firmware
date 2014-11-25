@@ -11,8 +11,10 @@
 
 #include <inttypes.h>
 #include <avr/interrupt.h>
+#include <util/crc16.h>
 #include <util/atomic.h>
 #include <math.h>
+#include <string.h>
 
 enum ModuloDataType {
 	ModuloDataTypeNone,
@@ -38,58 +40,104 @@ enum ModuloStatus {
 	ModuloStatusBreathing
 };
 
-// A buffer holds 4 bytes, which is the maximum size
-// for an atomic read/write.
-struct ModuloBuffer {
-	mutable volatile uint8_t data[4];
-	
-	ModuloBuffer() {
-		Reset();
-	}
-	
-	void Reset() {
-		volatile uint32_t *p = (uint32_t*)data;
-		*p = 0;
-	}
-	
+#define MODULO_MAX_BUFFER_SIZE 31
+
+// Buffer for storing data transmitted from the master to this device.
+class ModuloWriteBuffer {
+public:
+	ModuloWriteBuffer();
+	void Reset(uint8_t address);
+
+	// Append a value to the buffer
+	// Return false if there is not enough space or the CRC fails.
+	bool Append(const uint8_t value);
+
+    uint8_t GetSize() const {
+        return _length;
+    }
+
+	// Get the next value, of type T, from the buffer.
+	// Return false if there is not enough data.
 	template <class T>
-	void Set(const T& value) {
-		volatile T *p = (T*)data;
-		*p = value;
-	}
+	T Get(uint8_t offset) const {
+
+		if (offset+sizeof(T) > _length) {
+			return T();
+		}
+        T retval;
+        memcpy(&retval, _data+offset, sizeof(T));
+	    return retval;
+    }
+
+    uint8_t GetCommand() const {
+        return _command;
+    }
 	
+	bool IsValid();
 	
-	template <class T>
-	T Get() const {
-		volatile T *value = (T*)data;
-		return *value;
-	}
+private:
+	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+	uint8_t _command;
+	uint8_t _length;
+	uint8_t _expectedLength;
+    uint8_t _computedCRC;
+    int16_t _receivedCRC;
 };
 
+class ModuloReadBuffer {
+public:
+    ModuloReadBuffer() {}
 
-typedef void (*ModuloReadValueCallback)(uint8_t functionID, ModuloBuffer *buffer);
-typedef void (*ModuloWriteValueCallback)(uint8_t functionID, const ModuloBuffer &buffer);
+    void Reset(uint8_t address) {
+        _address = address;
+        _readPosition = 0;
+        _length = 0;
+    }
 
-typedef void (*ModuloBeginWriteArrayCallback)(uint8_t functionID, uint8_t arrayLength);
-typedef void (*ModuloWriteArrayDataCallback)(uint8_t functionID, uint8_t index, uint8_t data);
-typedef void (*ModuloEndWriteArrayCallback)(uint8_t functionID);
+   	// Append a value of type T to the buffer.
+    // Return false if there's not enough room in the buffer.
+   	template <class T>
+   	bool AppendValue(const T &value) {
+       	if (_GetLength()+sizeof(T) >= MODULO_MAX_BUFFER_SIZE-1) {
+           	return false;
+       	}
+       	memcpy(_data+_length, &value, sizeof(T));
+        _length += sizeof(T);
+       	return true;
+   	}
 
-typedef uint8_t (*ModuloBeginReadArrayCallback)(uint8_t functionID);
-typedef uint8_t (*ModuloReadArrayDataCallback)(uint8_t functionID, uint8_t index);
-typedef void (*ModuloEndReadArrayCallback)(uint8_t functionID);
+    uint8_t ComputeCRC(uint8_t address) {
+        uint8_t crc = _crc8_ccitt_update(0, address);
+        for (int i=0; i < _GetLength(); i++) {
+            crc = _crc8_ccitt_update(crc, _data[i]);
+        }
+        return crc;
+    }
+
+    bool GetNextByte(uint8_t *data) {
+        if (_readPosition < _GetLength()) {
+            *data = _data[_readPosition++];
+            return true;
+        }
+        return false;
+    }
+     
+
+private:
+    uint8_t _GetLength() const {
+        return _length;
+    }
+
+    uint8_t _length;
+    uint8_t _address;
+    uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+    uint8_t _readPosition;
+};
 
 void ModuloInit(
 	volatile uint8_t *statusDDR,
 	volatile uint8_t *statusPort,
-	uint8_t statusMask,
-	ModuloReadValueCallback readValue = 0,
-	ModuloWriteValueCallback writeValue = 0,
-	ModuloBeginWriteArrayCallback beginWriteArray = 0,
-	ModuloWriteArrayDataCallback writeArrayData = 0,
-	ModuloEndWriteArrayCallback endWriteArray = 0,
-	ModuloBeginReadArrayCallback beginReadArray = 0,
-	ModuloReadArrayDataCallback readArrayData = 0,
-	ModuloEndReadArrayCallback endReadArray = 0);
+	uint8_t statusMask);
 	
 void ModuloSetStatus(ModuloStatus status);
 void ModuloUpdateStatusLED();
@@ -161,5 +209,7 @@ extern const ModuloDataType ModuloDataTypes[];
 
 uint16_t ModuloGetDeviceID();
 
+bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
+bool ModuloWrite(const ModuloWriteBuffer &buffer);
 
 #endif /* MODULO_H_ */

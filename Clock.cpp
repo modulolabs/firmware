@@ -16,14 +16,16 @@ static unsigned char timer0_fract = 0;
 
 void ClockInit()
 {
-	
-    TIMSK0 |= (1 << TOIE0); // Enable the Timer0 overflow interrupt
-	
-    //TCCR0A |= (1 << WGM01) | ( 1 << WGM00);
+    TIMSK0 |= _BV(TOIE0); // Enable the Timer0 overflow interrupt
 
-    TCCR0B |= (1 << CS01) | (1 << CS00); // Enable clock with 64x prescaler
+#if defined(CPU_TINYX8)
+    TCCR0A |= _BV(CS01) | _BV(CS00); // Enable clock with 64x prescaler
+#elif  defined (CPU_TINYX41)
+    TCCR0B |= _BV(CS01) | _BV(CS00); // Enable clock with 64x prescaler
+#else
+    #error "No implementation of ClockInit() for current CPU"
+#endif
 
-    //CLKPR = CLKPS0 | CLKPS1;
 	
     sei();
 }
