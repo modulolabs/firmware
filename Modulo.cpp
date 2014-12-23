@@ -16,6 +16,7 @@
 #include <avr/eeprom.h>
 #include <util/crc16.h>
 
+static const uint8_t _broadcastAddress = 9;
 static volatile uint8_t _deviceAddress = 0;
 static ModuloStatus _status;
 static volatile uint8_t *_statusDDR = NULL;
@@ -24,6 +25,20 @@ static volatile uint8_t _statusMask = 0;
 static uint8_t _statusCounter = 0;
 static uint16_t _statusBreathe = 0;
 volatile uint16_t _deviceID = 0xFFFF;
+
+#define BroadcastCommandGlobalReset 0
+#define BroadcastCommandGetNextDeviceID 1
+#define BroadcastCommandSetAddress 2
+#define BroadcastCommandGetAddress 3
+#define BroadcastCommandGetDeviceType 4
+#define BroadcastCommandGetDeviceVersion 5
+#define BroadcastCommandGetCompanyName 6
+#define BroadcastCommandGetProductName 7
+#define BroadcastCommandGetDocURL 8
+#define BroadcastCommandGetDocURLContinued 9
+#define BroadcastCommandGetInterrupt 10
+#define BroadcastCommandSetStatusLED 11
+
 
 uint16_t ModuloGetDeviceID() {
 	// If _deviceID has been initialized, return it
@@ -43,6 +58,12 @@ uint16_t ModuloGetDeviceID() {
 	
 	return _deviceID;
 }
+
+static void _SetDeviceAddress(uint8_t address) {
+    _deviceAddress = address;
+	TWSA = (address << 1);
+}
+
 
 void ModuloInit(
 	volatile uint8_t *statusDDR,
@@ -64,13 +85,11 @@ void ModuloInit(
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
 	TWSCRA = (1 << TWDIE) | (1 << TWASIE) | (1 << TWEN) | (1 << TWSIE);
 
-	// TWAA? (Acknowledge Action)
-	TWSA = (MODULE_ADDRESS << 1);
 
+    _SetDeviceAddress(MODULE_ADDRESS);
 	
-	// Also listen for message on address 97, which is the smbus default address
-	uint8_t smbusDefaultAddress = 97;
-	TWSAM = (smbusDefaultAddress << 1)| 1;
+	// Also listen for message on the broadcast address
+	TWSAM = (_broadcastAddress << 1)| 1;
 #elif defined(CPU_TINYX8)
     TWCR = _BV(TWEN) | _BV(TWEA) | _BV(TWIE);
     TWAR = (MODULE_ADDRESS << 1) | _BV(TWGCE);
@@ -78,6 +97,7 @@ void ModuloInit(
 #endif
 
 }
+
 
 void ModuloSetStatus(ModuloStatus status) {
 	_status = status;
@@ -144,46 +164,46 @@ uint8_t _GetNumBytes(ModuloDataType dataType) {
 	}
 	return 1;
 }
-
-ModuloDataType _GetDataType(uint8_t function) {
-	// Linear search, since we don't store the length of ModuloDataTypes
-	for (int i=0; i < 255; i++) {
-		if (ModuloDataTypes[i] == ModuloDataTypeNone) {
-			break;
-		}
-		if (i == function) {
-			return ModuloDataTypes[i];
-		}
-	}
-	
-	switch(function) {
-		case MODULO_REGISTER_COMPANY_NAME:
-		case MODULO_REGISTER_DEVICE_NAME:
-		case MODULO_REGISTER_DOC_URL:
-		case MODULO_REGISTER_FUNCTION_NAMES:
-			return ModuloDataTypeString;
-
-		case MODULO_REGISTER_DEVICE_VERSION:
-		case MODULO_REGISTER_ASSIGN_ADDRESS:
-			return ModuloDataTypeUInt8;
-		case MODULO_REGISTER_DEVICE_ID:
-		case MODULO_REGISTER_SERIAL_NUMBER:
-		case MODULO_REGISTER_LOT_NUMBER:
-			return ModuloDataTypeUInt32;
-			
-		case MODULO_REGISTER_FUNCTION_TYPES:
-			return ModuloDataTypeString;
-		
-		case MODULO_REGISTER_STATUS_LED:
-		case MODULO_REGISTER_START_ENUMERATION:
-			return ModuloDataTypeBool;
-		case MODULO_REGISTER_ENUMERATE_NEXT_DEVICE:
-		case MODULO_REGISTER_ASSIGN_DEVICE_ID:
-			return ModuloDataTypeUInt16;
-	}
-	
-	return ModuloDataTypeNone;
-}
+//
+//ModuloDataType _GetDataType(uint8_t function) {
+	//// Linear search, since we don't store the length of ModuloDataTypes
+	//for (int i=0; i < 255; i++) {
+		//if (ModuloDataTypes[i] == ModuloDataTypeNone) {
+			//break;
+		//}
+		//if (i == function) {
+			//return ModuloDataTypes[i];
+		//}
+	//}
+	//
+	//switch(function) {
+		//case MODULO_REGISTER_COMPANY_NAME:
+		//case MODULO_REGISTER_DEVICE_NAME:
+		//case MODULO_REGISTER_DOC_URL:
+		//case MODULO_REGISTER_FUNCTION_NAMES:
+			//return ModuloDataTypeString;
+//
+		//case MODULO_REGISTER_DEVICE_VERSION:
+		//case MODULO_REGISTER_ASSIGN_ADDRESS:
+			//return ModuloDataTypeUInt8;
+		//case MODULO_REGISTER_DEVICE_ID:
+		//case MODULO_REGISTER_SERIAL_NUMBER:
+		//case MODULO_REGISTER_LOT_NUMBER:
+			//return ModuloDataTypeUInt32;
+			//
+		//case MODULO_REGISTER_FUNCTION_TYPES:
+			//return ModuloDataTypeString;
+		//
+		//case MODULO_REGISTER_STATUS_LED:
+		//case MODULO_REGISTER_START_ENUMERATION:
+			//return ModuloDataTypeBool;
+		//case MODULO_REGISTER_ENUMERATE_NEXT_DEVICE:
+		//case MODULO_REGISTER_ASSIGN_DEVICE_ID:
+			//return ModuloDataTypeUInt16;
+	//}
+	//
+	//return ModuloDataTypeNone;
+//}
 
 static void _Acknowledge(bool ack, bool complete=false) {
 #if defined(CPU_TINYX41)
@@ -206,12 +226,132 @@ static void _Acknowledge(bool ack, bool complete=false) {
 ModuloWriteBuffer _writeBuffer;
 ModuloReadBuffer _readBuffer;
 
+static bool _shouldReplyToBroadcastRead = false;
+
+static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
+    _shouldReplyToBroadcastRead = false;
+
+    if (buffer.GetAddress() == _broadcastAddress) {
+
+        switch(buffer.GetCommand()) {
+            case BroadcastCommandGlobalReset:
+                if (buffer.GetSize() == 0) {
+                    _SetDeviceAddress(0);
+                    ModuloReset();
+                }
+                break;
+
+
+            case BroadcastCommandGetNextDeviceID:
+                if (buffer.GetSize() == 2 and
+                    (buffer.Get<uint16_t>(0) <= ModuloGetDeviceID())) {
+                    _shouldReplyToBroadcastRead = true;
+                    return true;
+                }
+                break;
+
+            case BroadcastCommandSetAddress:
+                if (buffer.GetSize() == 3 and
+                    buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                    _SetDeviceAddress(buffer.Get<uint8_t>(2));
+                    return true;
+                }
+                break;
+
+            // These commands all expect the device ID
+            case BroadcastCommandGetAddress:
+            case BroadcastCommandGetDeviceType:
+            case BroadcastCommandGetDeviceVersion:
+            case BroadcastCommandGetCompanyName:
+            case BroadcastCommandGetProductName:
+            case BroadcastCommandGetDocURL:
+            case BroadcastCommandGetDocURLContinued:
+                if (buffer.GetSize() == 2 and buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                        _shouldReplyToBroadcastRead = true;
+                        return true;
+                }
+                break;
+            case BroadcastCommandSetStatusLED:
+                if (buffer.GetSize() == 1) {
+                    ModuloSetStatus((ModuloStatus)buffer.Get<uint8_t>(0));
+                    return true;
+                }
+                break;
+            case BroadcastCommandGetInterrupt:
+                // XXX: not implemented
+                return false;
+                
+
+        }
+        return false;
+    }
+
+    return ModuloWrite(buffer);
+}
+
+void ModuloReset() {
+
+}
+
+
+
+static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer) {
+    if (writeBuffer.GetAddress() == _broadcastAddress) {
+        if (!_shouldReplyToBroadcastRead) {
+            return false;
+        }
+        switch(writeBuffer.GetCommand()) {
+            case BroadcastCommandGetNextDeviceID:
+                {
+                    // We have to return the deviceID in big endian order, so that if a collision occurs
+                    // the smallest value will win.
+                    uint16_t deviceID = ModuloGetDeviceID();
+                    volatile uint16_t d = deviceID;
+                    deviceID = (deviceID << 8) | (deviceID >> 8);
+                    readBuffer->AppendValue<uint16_t>(deviceID);
+                    return true;
+                }
+            case BroadcastCommandGetAddress:
+                {
+                    uint8_t addr = _deviceAddress;
+                    readBuffer->AppendValue<uint8_t>(addr);
+                    return true;
+                }
+            case BroadcastCommandGetDeviceType:
+                readBuffer->AppendString(ModuloDeviceType);
+                return true;
+            case BroadcastCommandGetDeviceVersion:
+                readBuffer->AppendValue<uint16_t>(ModuloDeviceVersion);
+                return true;
+            case BroadcastCommandGetCompanyName:
+                readBuffer->AppendString(ModuloCompanyName);
+                return true;
+            case BroadcastCommandGetProductName:
+                readBuffer->AppendString(ModuloProductName);
+                return true;
+            case BroadcastCommandGetDocURL:
+                readBuffer->AppendString(ModuloDocURL);
+                return true;
+            case BroadcastCommandGetDocURLContinued:
+                readBuffer->AppendString(ModuloDocURL);
+                return true;
+            case BroadcastCommandGetInterrupt:
+                // XXX: Not implemented
+                return false;
+        }
+        return false;
+    }
+
+
+    return ModuloRead(command, writeBuffer, readBuffer);
+}
+
+
+
 // The interrupt service routine. Examine registers and dispatch to the handlers above.
 #if defined(CPU_TINYX41)
 ISR(TWI_SLAVE_vect)
 {
-
-
 	volatile bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
 	volatile bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
 	volatile bool clockHold = (TWSSRA & _BV(TWCH));
@@ -230,9 +370,9 @@ ISR(TWI_SLAVE_vect)
 			if (isReadOperation) {
                 _readBuffer.Reset(address);
                 //_readBuffer.AppendValue(42);
-				ModuloRead(_writeBuffer.GetCommand(), _writeBuffer, &_readBuffer);
+				bool retval = _ModuloRead(_writeBuffer.GetCommand(), _writeBuffer, &_readBuffer);
                 _readBuffer.AppendValue(_readBuffer.ComputeCRC(address));
-                _Acknowledge(true /*ack*/, false /*complete*/);
+                _Acknowledge(retval /*ack*/, false /*complete*/);
 			} else {
 				_writeBuffer.Reset(address);
                 _Acknowledge(true /*ack*/, false /*complete*/);
@@ -263,7 +403,7 @@ ISR(TWI_SLAVE_vect)
 
             volatile bool isValid = _writeBuffer.IsValid();
             if (isValid) {
-                ModuloWrite(_writeBuffer);
+                _ModuloWrite(_writeBuffer);
             }
             _Acknowledge(ack /*ack*/, !ack /*complete*/);
         }
@@ -410,6 +550,7 @@ void ModuloWriteBuffer::Reset(volatile uint8_t address) {
     _length = 0;
     _expectedLength = 0xFF;
     _receivedCRC = -1;
+    _address = address >> 1;
     _computedCRC = _crc8_ccitt_update(0, address);
 }
 	

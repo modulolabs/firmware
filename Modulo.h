@@ -16,6 +16,19 @@
 #include <math.h>
 #include <string.h>
 
+class ModuloWriteBuffer;
+class ModuloReadBuffer;
+
+bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
+bool ModuloWrite(const ModuloWriteBuffer &buffer);
+void ModuloReset();
+
+extern const char *ModuloDeviceType;
+extern const uint16_t ModuloDeviceVersion;
+extern const char *ModuloCompanyName;
+extern const char *ModuloProductName;
+extern const char *ModuloDocURL;
+
 enum ModuloDataType {
 	ModuloDataTypeNone,
 	ModuloDataTypeBool,
@@ -75,8 +88,13 @@ public:
 	
 	bool IsValid();
 	
+    uint8_t GetAddress() const {
+        return _address;
+    }
+
 private:
 	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+    uint8_t _address;
 	uint8_t _command;
 	uint8_t _length;
 	uint8_t _expectedLength;
@@ -106,6 +124,14 @@ public:
        	return true;
    	}
 
+    void AppendString(const char *s) {
+        while (*s) {
+            AppendValue<char>(*s);
+            s++;
+        }
+        AppendValue<char>(0);
+    }
+
     uint8_t ComputeCRC(uint8_t address) {
         uint8_t crc = _crc8_ccitt_update(0, address);
         for (int i=0; i < _GetLength(); i++) {
@@ -120,8 +146,7 @@ public:
             return true;
         }
         return false;
-    }
-     
+    }    
 
 private:
     uint8_t _GetLength() const {
@@ -188,13 +213,6 @@ private:
 #define MODULO_REGISTER_ASSIGN_ADDRESS 254
 #define MODULO_INVALID_REGISTER 255
 
-extern const char ModuloCompanyName[];
-extern const char ModuloDeviceName[];
-extern const uint8_t ModuloDeviceVersion;
-extern const char ModuloDocURL[];
-extern const char ModuloFunctionNames[];
-extern const ModuloDataType ModuloDataTypes[];
-
 #define DEFINE_MODULO_CONSTANTS(companyName, deviceName, deviceVersion, docURL) \
     const char ModuloCompanyName[] = companyName; \
     const char ModuloDeviceName[] = deviceName; \
@@ -209,7 +227,6 @@ extern const ModuloDataType ModuloDataTypes[];
 
 uint16_t ModuloGetDeviceID();
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
-bool ModuloWrite(const ModuloWriteBuffer &buffer);
+
 
 #endif /* MODULO_H_ */
