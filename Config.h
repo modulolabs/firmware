@@ -30,7 +30,7 @@
 #define MODULE_TYPE_MOTOR 11
 #define MODULE_TYPE_AC 12
 
-#define MODULE_TYPE MODULE_TYPE_DPAD
+#define MODULE_TYPE MODULE_TYPE_RTC
 
 // For now, define the address to be the same as the type
 #define MODULE_ADDRESS MODULE_TYPE

@@ -24,16 +24,17 @@
 static const uint8_t DISPLAY_WIDTH = 128;
 static const uint8_t DISPLAY_HEIGHT = 64;
 
-
-DEFINE_MODULO_CONSTANTS("Integer Labs", "Display", 0, "http://www.integerlabs.net/docs/Display");
-DEFINE_MODULO_FUNCTION_NAMES("Width,Height,Depth,Index,Pixels");
-DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeUInt16, ModuloDataTypeUInt16, ModuloDataTypeUInt8,
-	ModuloDataTypeUInt16, ModuloDataTypeString);
+const char *ModuloDeviceType = "co.modulo.MiniDisplay";
+const uint16_t ModuloDeviceVersion = 0;
+const char *ModuloCompanyName = "Integer Labs";
+const char *ModuloProductName = "MiniDisplay";
+const char *ModuloDocURL = "modulo.co/docs/MiniDisplay";
 
 static volatile uint16_t pixelIndex = 0;
 
 Adafruit_SSD1306 oled;
 
+/*
 void _WriteModuloValue(uint8_t functionID, const ModuloBuffer &buffer) {
 	switch (functionID) {
 		case 3: // Index
@@ -54,7 +55,17 @@ void _WriteArrayData(uint8_t functionID, uint8_t index, uint8_t data) {
 void _EndWriteArray(uint8_t functionID) {
 	oled.EndSetPixels();
 }
+*/
 
+
+
+bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+    return false;
+}
+
+bool ModuloWrite(const ModuloWriteBuffer &buffer) {
+    return false;
+}
 
 
 int main(void)
@@ -63,18 +74,16 @@ int main(void)
 	oled.clear();
 	
 	ClockInit();
-	ModuloInit(&DDRB, &PORTB, _BV(2),
-		0 /*readCallback*/,
-		_WriteModuloValue,
-		_BeginWriteArray,
-		_WriteArrayData,
-		_EndWriteArray);
-	
+	ModuloInit(&DDRA, &PORTA, _BV(5));
+	ModuloSetStatus(ModuloStatusBlinking);
 
-
-//	for (int i =0; i < 21*8; i++) {
-//		oled.drawChar(i % 21, i/21, i);
-//	}
+    oled.begin();
+    //oled.display(0);
+    
+	for (int i =0; i < 21*8; i++) {
+		oled.drawChar(i % 21, i/21, i);
+	}
+    
 
 	//oled.display(0);
 	//oled.startscrollright(0x00, 0x0F) ;
@@ -85,9 +94,9 @@ int main(void)
 		//oled.display(0);
 		//x = (x+1) % SSD1306_LCDWIDTH;
 		//oled.invertDisplay(true);
-		delay(500);
+		//delay(500);
 		//oled.invertDisplay(false);
-		delay(500);
+		//delay(500);
 		
 		//oled.clear();
 		//oled.drawString(3, 3, "abcdefghijklmnopqrstuvwxyz");

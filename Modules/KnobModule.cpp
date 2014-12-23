@@ -15,7 +15,7 @@
 #include <avr/delay.h>
 #include "PWM.h"
 #include "Clock.h"
-
+#include "Modulo.h"
 
 /*
   LED - PA7
@@ -141,16 +141,16 @@ public:
     Decoder() : _previousA(false), _position(0) {
     }
 
-    int32_t GetPosition() {
+    int16_t GetPosition() volatile {
         return _position;
     }
 
-    void SetPosition(int32_t pos) {
-        _position = pos;
+    void AddPositionOffset(int16_t offset) volatile {
+        _position += offset;
     }
 
     // Increment (or decrement) the position for every full quadrature cycle
-    void Update(bool A, bool B) {
+    void Update(bool A, bool B) volatile {
         // At rest, encA and encB are high. Between each detent the encoder cycles
         // through the four possible states. We can therefore detect a change from
         // one detent to the next by looking for rising or falling edges on one pin
@@ -168,15 +168,74 @@ public:
 
 private:
     bool _previousA;
-    int32_t _position;
+    int16_t _position;
 };
+
+const char *ModuloDeviceType = "co.modulo.Knob";
+const uint16_t ModuloDeviceVersion = 0;
+const char *ModuloCompanyName = "Integer Labs";
+const char *ModuloProductName = "Knob";
+const char *ModuloDocURL = "modulo.co/docs/Knob";
+
+#define FUNCTION_GET_STATE  0
+#define FUNCTION_ADD_OFFSET 1
+#define FUNCTION_SET_COLOR  2
+
+volatile uint8_t _buttonState = false;
+volatile uint8_t _buttonPressed = false;
+volatile uint8_t _buttonReleased = false;
+volatile Decoder _decoder;
+
+
+bool ModuloWrite(const ModuloWriteBuffer &buffer) {
+    switch(buffer.GetCommand()) {
+        case FUNCTION_GET_STATE:
+            return true;
+        case FUNCTION_ADD_OFFSET:
+            if (buffer.GetSize() != 2) {
+                return false;
+            }
+            _decoder.AddPositionOffset(buffer.Get<int16_t>(0));
+            break;
+        case FUNCTION_SET_COLOR:
+            if (buffer.GetSize() != 3) {
+                return false;
+            }
+            SetRGB(buffer.Get<uint8_t>(0)/255.,
+                   buffer.Get<uint8_t>(1)/255.,
+                   buffer.Get<uint8_t>(2)/255.);
+            return true;
+    }
+    return false;
+}
+
+bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+    bool state = _buttonState;
+    bool pressed = _buttonPressed;
+    bool released = _buttonReleased;
+    switch(writeBuffer.GetCommand()) {
+        case FUNCTION_GET_STATE:
+        buffer->AppendValue<int16_t>(_decoder.GetPosition());
+        buffer->AppendValue<uint8_t>(state);
+        buffer->AppendValue<uint8_t>(pressed);
+        buffer->AppendValue<uint8_t>(released);
+        _buttonPressed = false;
+        _buttonReleased = false;
+        return true;
+    }
+    return false;
+}
+
+
 
 int main(void)
 {
 	//TwoWireInit(MODULE_ADDRESS, _OnDataReceived, _OnDataRequested);
 	//Init();
     ClockInit();
-		
+    ModuloInit(&DDRA, &PORTA, _BV(7));
+    ModuloSetStatus(ModuloStatusBlinking);
+    
 	// Enable pullups on the A/B pins
 	PUEB |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
 
@@ -187,19 +246,29 @@ int main(void)
     pwm1.EnableOutputCompare(1); // Green
     pwm2.EnableOutputCompare(2); // Blue
 
-
-    SetRGB(0,0,0);
-
-    bool previousSW = false;
-    Decoder decoder;
     Debouncer debouncer;
 
     float hue = 0;
 	while(1)
 	{
-
-        decoder.Update(INPUT_PINS & _BV(ENCA_PIN), INPUT_PINS & _BV(ENCB_PIN));
+        _decoder.Update(INPUT_PINS & _BV(ENCA_PIN), INPUT_PINS & _BV(ENCB_PIN));
         debouncer.Update(INPUT_PINS & _BV(SW_PIN));
+
+        noInterrupts();
+        if (!_buttonState and debouncer.Get()) {
+            _buttonPressed = true;
+        }
+        if (_buttonState and !debouncer.Get()) {
+            _buttonReleased = true;
+        }
+        _buttonState = debouncer.Get();
+        interrupts();
+
+        //_delay_ms(10);
+
+        /*
+        
+        
 
         if (debouncer.Get() and !previousSW) {
            hue += .5;
@@ -209,6 +278,7 @@ int main(void)
         hue += decoder.GetPosition()/24.0;
         decoder.SetPosition(0);
         SetHSV(hue, 1, 1);
+        */
 	}
 }
 

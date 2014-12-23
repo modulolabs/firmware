@@ -181,7 +181,6 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
     switch(command) {
         case FUNCTION_GET_TIME:
-
             buffer->AppendValue<uint8_t>(calendar.seconds);
             buffer->AppendValue<uint8_t>(calendar.minutes);
             buffer->AppendValue<uint8_t>(calendar.hours);
@@ -202,17 +201,24 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
     return false;
 }
 
+const char *ModuloDeviceType = "co.modulo.rtc";
+const uint16_t ModuloDeviceVersion = 0;
+const char *ModuloCompanyName = "Integer Labs";
+const char *ModuloProductName = "Real Time Clock";
+const char *ModuloDocURL = "modulo.co/docs/RTC";
+
 
 int main(void)
 {
 	ClockInit();
-	ModuloInit(&DDRA, &PORTA, _BV(1));
-
-    I2CInit(&PORTD, &DDRD, &PIND, 1,
-            &PORTD, &DDRD, &PIND, 2);
+	ModuloInit(&DDRA, &PORTA, _BV(7));
 
     
-    /*
+    I2CInit(&PORTB, &DDRB, &PINB, 1,
+            &PORTB, &DDRB, &PINB, 0);
+
+    
+    
     calendar.years = 14;
     calendar.months = 10;
     calendar.days = 20;
@@ -220,7 +226,7 @@ int main(void)
     calendar.hours = 12;
     calendar.minutes = 21;
     _writeRegisters();
-    */
+    
 
 	while (1) {
         _readRegisters();

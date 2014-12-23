@@ -33,34 +33,42 @@ Adafruit_SSD1306::Adafruit_SSD1306()  {
 	hwSPI = true;
 	csport = &PORTA; // GPIO 1
 	cspinmask = _BV(2);
+    DDRA |= cspinmask;
 		
 	mosiport = &PORTA; // GPIO 2
 	mosipinmask = _BV(1);
-		
+	DDRA |= mosipinmask;
+
 	clkport = &PORTA; // GPIO 0
 	clkpinmask = _BV(3);
-		
+	DDRA |= clkpinmask;
 
 	
-	resetport = &PORTB; // GPIO 7
-	dcport = &PORTB; // GPIO 6
+
 
 	bool isAdafruitBoard = false;
 	if (isAdafruitBoard) {
+    	resetport = &PORTB; // GPIO 7
+    	dcport = &PORTB; // GPIO 6
 		resetpinmask = _BV(0);
 		dcpinmask = _BV(1);
+
+        DDRB |= resetpinmask | dcpinmask;
 	} else {
-		resetpinmask = _BV(1);
-		dcpinmask = _BV(0);
+    	resetport = &PORTA;
+        resetpinmask = _BV(7);
+        DDRA |= resetpinmask;
+
+    	dcport = &PORTB;
+		dcpinmask = _BV(2);
+        DDRB |= dcpinmask;
+        
 	}
 }
   
 
 void Adafruit_SSD1306::begin(bool reset, uint8_t vccstate) {
 	_vccstate = vccstate;
-
-	DDRA |= cspinmask | mosipinmask | clkpinmask;
-	DDRB |= resetpinmask | dcpinmask;
 
     //SPI.begin ();
     //SPI.setClockDivider (SPI_CLOCK_DIV2); // 8 MHz

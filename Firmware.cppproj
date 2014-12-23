@@ -63,6 +63,7 @@
       </ToolNumber>
       <ToolName>Simulator</ToolName>
     </com_atmel_avrdbg_tool_simulator>
+    <UseGdb>False</UseGdb>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -122,7 +123,6 @@
             <Value>DEBUG</Value>
           </ListValues>
         </avrgcc.compiler.symbols.DefSymbols>
-        <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
         <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
         <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
         <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
@@ -139,7 +139,7 @@
             <Value>..</Value>
           </ListValues>
         </avrgcccpp.compiler.directories.IncludePaths>
-        <avrgcccpp.compiler.optimization.level>Optimize (-O1)</avrgcccpp.compiler.optimization.level>
+        <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
         <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
         <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
         <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
@@ -169,7 +169,10 @@
     <Compile Include="I2CMaster.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="Modules\ButtonsModule.cpp">
+    <Compile Include="Modules\ACModule.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Modules\DPadModule.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Modules\DCModule.cpp">
@@ -177,6 +180,8 @@
     </Compile>
     <Compile Include="Modules\GPIOModule.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="Modules\KnobModule.cpp">
       <SubType>compile</SubType>
@@ -195,15 +200,23 @@
     </Compile>
     <Compile Include="Modules\RTCModule.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-O0</CustomCompilationSetting>
     </Compile>
     <Compile Include="Modules\ServoModule.cpp">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Modules\StepperModule.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Modules\ThermocoupleModule.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="Modulo.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="Modulo.h">
       <SubType>compile</SubType>
@@ -242,15 +255,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="PWM.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Pins.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Pins.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="StepperModule.cpp">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
