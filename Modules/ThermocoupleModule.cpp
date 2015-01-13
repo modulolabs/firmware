@@ -18,7 +18,7 @@
 #define INVALID_TEMP 0xFFFF
 volatile int16_t currentTemp = INVALID_TEMP;
  
-const char *ModuloDeviceType = "co.modulo.Thermocouple";
+const char *ModuloDeviceType = "co.modulo.thermocouple";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
 const char *ModuloProductName = "Thermocouple";

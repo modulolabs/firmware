@@ -92,7 +92,6 @@ static void _writeRegisters() {
 
 ISR(ADC_vect)
 {
-	
 	asm("nop");
 }
 
@@ -106,19 +105,13 @@ uint16_t ReadADC(uint8_t channel)
 #endif
 
 	//ADMUXB = 4 << REFS0;
-	ADCSRA = _BV(ADEN) | _BV(ADIE);
-	set_sleep_mode(SLEEP_MODE_ADC);
-	sleep_enable();
-	sleep_cpu();
+	ADCSRA = _BV(ADEN) | _BV(ADSC);
+
 	
 	// Wait for the conversion to complete
 	while (ADCSRA & _BV(ADSC)) {
-		sleep_cpu();
-	}
 	
-	sleep_disable();
-	sei();
-	//ADCSRA &= ~_BV(ADIE);
+	}
 	
 	// Must read ADCL before ADCH;
 	uint16_t adcResult = ADCL;
@@ -143,7 +136,7 @@ float ReadTemperature() {
   // take N samples in a row
   float average = 0;
   for (int i=0; i< NUMSAMPLES; i++) {
-   average += ReadADC(2)/float(NUMSAMPLES);
+   average += ReadADC(1)/float(NUMSAMPLES);
   }
  
   // convert the value to resistance
@@ -164,15 +157,25 @@ float ReadTemperature() {
 #define FUNCTION_GET_TIME 0
 #define FUNCTION_SET_TIME 1
 #define FUNCTION_GET_TEMPERATURE 2
-#define FUNCTION_GET_DEVICE_ID 254
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
     switch(buffer.GetCommand()) {
         case FUNCTION_SET_TIME:
-        case FUNCTION_GET_DEVICE_ID:
+            if (buffer.GetSize() != 7) {
+                return false;
+            }
+            calendar.seconds = buffer.Get<uint8_t>(0);
+            calendar.minutes = buffer.Get<uint8_t>(1);
+            calendar.hours = buffer.Get<uint8_t>(2);
+            calendar.days = buffer.Get<uint8_t>(3);
+            calendar.weekdays = buffer.Get<uint8_t>(4);
+            calendar.months = buffer.Get<uint8_t>(5);
+            calendar.years = buffer.Get<uint8_t>(6);
+            _writeRegisters();
             return true;
-        case FUNCTION_GET_TEMPERATURE:
         case FUNCTION_GET_TIME:
+            return buffer.GetSize() == 0;
+        case FUNCTION_GET_TEMPERATURE:
             return buffer.GetSize() == 0;
     }
     return false;
@@ -192,20 +195,17 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
             buffer->AppendValue<uint8_t>(calendar.battLow);
             return true;
         case FUNCTION_GET_TEMPERATURE:
-           // buffer->AppendValue<uint16_t>(ReadTemperature() * 10);
-            return true;
-        case FUNCTION_GET_DEVICE_ID:
-            buffer->AppendValue<uint16_t>(875);
+            buffer->AppendValue<int16_t>(ReadTemperature()*10);
             return true;
     }
     return false;
 }
 
-const char *ModuloDeviceType = "co.modulo.rtc";
+const char *ModuloDeviceType = "co.modulo.clock";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
 const char *ModuloProductName = "Real Time Clock";
-const char *ModuloDocURL = "modulo.co/docs/RTC";
+const char *ModuloDocURL = "modulo.co/docs/Clock";
 
 
 int main(void)
@@ -218,7 +218,7 @@ int main(void)
             &PORTB, &DDRB, &PINB, 0);
 
     
-    
+    /*
     calendar.years = 14;
     calendar.months = 10;
     calendar.days = 20;
@@ -226,7 +226,7 @@ int main(void)
     calendar.hours = 12;
     calendar.minutes = 21;
     _writeRegisters();
-    
+    */
 
 	while (1) {
         _readRegisters();

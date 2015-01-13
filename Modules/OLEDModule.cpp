@@ -57,6 +57,8 @@ void _EndWriteArray(uint8_t functionID) {
 }
 */
 
+#define SET_PIXELS_COMMAND 0
+
 
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
@@ -64,42 +66,36 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 }
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
+    switch (buffer.GetCommand()) {
+    case SET_PIXELS_COMMAND:
+        if (buffer.GetSize() != 18) {
+            return false;
+        }
+        oled.BeginSetPixels(buffer.Get<uint8_t>(1), buffer.Get<uint8_t>(0));
+        for(int i=2; i < 18; i++) {
+            oled.fastSPIwrite(buffer.Get<uint8_t>(i));
+        }
+        oled.EndSetPixels();
+
+        return true;
+        
+    }
     return false;
 }
 
 
 int main(void)
 {
-	oled.begin();
-	oled.clear();
 	
 	ClockInit();
 	ModuloInit(&DDRA, &PORTA, _BV(5));
-	ModuloSetStatus(ModuloStatusBlinking);
-
-    oled.begin();
-    //oled.display(0);
     
-	for (int i =0; i < 21*8; i++) {
-		oled.drawChar(i % 21, i/21, i);
-	}
-    
+    oled.clear();
 
-	//oled.display(0);
-	//oled.startscrollright(0x00, 0x0F) ;
-			
-	//uint8_t x = 0;
+    //for (int i =0; i < 21*8; i++) {
+    //	oled.drawChar(i % 21, i/21, i);
+    //}
 	while (1) {
-
-		//oled.display(0);
-		//x = (x+1) % SSD1306_LCDWIDTH;
-		//oled.invertDisplay(true);
-		//delay(500);
-		//oled.invertDisplay(false);
-		//delay(500);
-		
-		//oled.clear();
-		//oled.drawString(3, 3, "abcdefghijklmnopqrstuvwxyz");
 	
 	}
 }

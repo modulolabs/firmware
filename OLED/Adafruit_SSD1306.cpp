@@ -64,6 +64,8 @@ Adafruit_SSD1306::Adafruit_SSD1306()  {
         DDRB |= dcpinmask;
         
 	}
+
+    begin();
 }
   
 
@@ -362,57 +364,7 @@ void Adafruit_SSD1306::EndSetPixels()
 	*csport |= cspinmask;
 }
 
-void Adafruit_SSD1306::display(uint8_t val) {
 
-
-#if 0
-	for (uint8_t page=0; page < 8; page++) {
-		for (uint8_t x=0; x < SSD1306_LCDWIDTH; x++) {
-			uint8_t data;
-			for (uint8_t y=page*8; y < (page+1)*8; y++) {
-				bool bit = false;
-				if (x == y+val) {
-					bit = true;
-				}
-				data >>= 1;
-				if (bit) {
-					data |= 0x80;
-				}
-			}
-			fastSPIwrite(data);
-		}
-	}
-#endif
-#if 0
-
-    for (uint16_t i=0; i<(SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8); i++) {
-		//if ( i < SSD1306_LCDWIDTH*1.5) {
-			fastSPIwrite(1);
-		//} else {
-		//	fastSPIwrite(0);
-		//}
-    //  fastSPIwrite('U');
-      //ssd1306_data(buffer[i]);
-    }
-	
-#endif
-
-	drawChar(0, 0, 'e', 0, 0, 1);
-	drawChar(0, 0, 'k', 0, 0, 1);
-	drawChar(0, 0, 't', 0, 0, 1);
-	drawChar(0, 0, ' ', 0, 0, 1);
-	drawChar(0, 0, 'w', 0, 0, 1);
-	drawChar(0, 0, 'a', 0, 0, 1);
-	drawChar(0, 0, 's', 0, 0, 1);
-	drawChar(0, 0, ' ', 0, 0, 1);
-	drawChar(0, 0, 'h', 0, 0, 1);
-	drawChar(0, 0, 'e', 0, 0, 1);
-	drawChar(0, 0, 'r', 0, 0, 1);
-	drawChar(0, 0, 'e', 0, 0, 1);
-	drawChar(0, 0, '!', 0, 0, 1);
-	
-    *csport |= cspinmask;
-}
 
 void Adafruit_SSD1306::clear() {
 	BeginSetPixels(0,0);

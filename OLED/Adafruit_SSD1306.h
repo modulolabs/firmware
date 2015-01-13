@@ -115,7 +115,6 @@ class Adafruit_SSD1306 {
 	void ssd1306_data(uint8_t c);
 
 	void invertDisplay(uint8_t i);
-	void display(uint8_t value);
 
 	void startscrollright(uint8_t start, uint8_t stop);
 	void startscrollleft(uint8_t start, uint8_t stop);

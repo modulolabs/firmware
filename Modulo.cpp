@@ -84,9 +84,6 @@ void ModuloInit(
 #if defined(CPU_TINYX41)
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
 	TWSCRA = (1 << TWDIE) | (1 << TWASIE) | (1 << TWEN) | (1 << TWSIE);
-
-
-    _SetDeviceAddress(MODULE_ADDRESS);
 	
 	// Also listen for message on the broadcast address
 	TWSAM = (_broadcastAddress << 1)| 1;
@@ -395,6 +392,7 @@ ISR(TWI_SLAVE_vect)
         	TWSD = data;
     		_Acknowledge(ack /*ack*/, !ack /*complete*/);
 		} else {
+        
 			volatile uint8_t data = TWSD;
 			
 			// The first byte has the command in the upper 3 bytes
@@ -405,6 +403,7 @@ ISR(TWI_SLAVE_vect)
             if (isValid) {
                 _ModuloWrite(_writeBuffer);
             }
+
             _Acknowledge(ack /*ack*/, !ack /*complete*/);
         }
 	}
