@@ -81,6 +81,8 @@ void Adafruit_SSD1306::begin(bool reset, uint8_t vccstate) {
 		SPCR |= _BV(MSTR);
 		SPCR |= _BV(SPE);
 		
+        SPSR |= _BV(SPI2X);
+
 		// Simulate completion of a previous write
 		//SPSR |= _BV(SPIF);
 		SPDR = 0;

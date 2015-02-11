@@ -93,6 +93,7 @@ void ModuloInit(
     TWAMR = 0xFF;
 #endif
 
+    ModuloReset();
 }
 
 
@@ -161,46 +162,7 @@ uint8_t _GetNumBytes(ModuloDataType dataType) {
 	}
 	return 1;
 }
-//
-//ModuloDataType _GetDataType(uint8_t function) {
-	//// Linear search, since we don't store the length of ModuloDataTypes
-	//for (int i=0; i < 255; i++) {
-		//if (ModuloDataTypes[i] == ModuloDataTypeNone) {
-			//break;
-		//}
-		//if (i == function) {
-			//return ModuloDataTypes[i];
-		//}
-	//}
-	//
-	//switch(function) {
-		//case MODULO_REGISTER_COMPANY_NAME:
-		//case MODULO_REGISTER_DEVICE_NAME:
-		//case MODULO_REGISTER_DOC_URL:
-		//case MODULO_REGISTER_FUNCTION_NAMES:
-			//return ModuloDataTypeString;
-//
-		//case MODULO_REGISTER_DEVICE_VERSION:
-		//case MODULO_REGISTER_ASSIGN_ADDRESS:
-			//return ModuloDataTypeUInt8;
-		//case MODULO_REGISTER_DEVICE_ID:
-		//case MODULO_REGISTER_SERIAL_NUMBER:
-		//case MODULO_REGISTER_LOT_NUMBER:
-			//return ModuloDataTypeUInt32;
-			//
-		//case MODULO_REGISTER_FUNCTION_TYPES:
-			//return ModuloDataTypeString;
-		//
-		//case MODULO_REGISTER_STATUS_LED:
-		//case MODULO_REGISTER_START_ENUMERATION:
-			//return ModuloDataTypeBool;
-		//case MODULO_REGISTER_ENUMERATE_NEXT_DEVICE:
-		//case MODULO_REGISTER_ASSIGN_DEVICE_ID:
-			//return ModuloDataTypeUInt16;
-	//}
-	//
-	//return ModuloDataTypeNone;
-//}
+
 
 static void _Acknowledge(bool ack, bool complete=false) {
 #if defined(CPU_TINYX41)
@@ -269,8 +231,8 @@ static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
                 }
                 break;
             case BroadcastCommandSetStatusLED:
-                if (buffer.GetSize() == 1) {
-                    ModuloSetStatus((ModuloStatus)buffer.Get<uint8_t>(0));
+                if (buffer.GetSize() == 3 and buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                    ModuloSetStatus((ModuloStatus)buffer.Get<uint8_t>(2));
                     return true;
                 }
                 break;
@@ -286,12 +248,6 @@ static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
     return ModuloWrite(buffer);
 }
 
-void ModuloReset() {
-
-}
-
-
-
 static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer) {
     if (writeBuffer.GetAddress() == _broadcastAddress) {
         if (!_shouldReplyToBroadcastRead) {
@@ -303,7 +259,6 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
                     // We have to return the deviceID in big endian order, so that if a collision occurs
                     // the smallest value will win.
                     uint16_t deviceID = ModuloGetDeviceID();
-                    volatile uint16_t d = deviceID;
                     deviceID = (deviceID << 8) | (deviceID >> 8);
                     readBuffer->AppendValue<uint16_t>(deviceID);
                     return true;
@@ -349,15 +304,17 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
 #if defined(CPU_TINYX41)
 ISR(TWI_SLAVE_vect)
 {
-	volatile bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
-	volatile bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
-	volatile bool clockHold = (TWSSRA & _BV(TWCH));
-	volatile bool receiveAck = (TWSSRA & _BV(TWRA));
-	volatile bool collision = (TWSSRA & _BV(TWC));
-	volatile bool busError = (TWSSRA & _BV(TWBE));
-	volatile bool isReadOperation = (TWSSRA & (1 << TWDIR));
-	volatile bool addressReceived = (TWSSRA & (1 << TWAS)); // Check if we received an address and not a stop
+	bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
+	bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
+	bool isReadOperation = (TWSSRA & (1 << TWDIR));
+	bool addressReceived = (TWSSRA & (1 << TWAS)); // Check if we received an address and not a stop
 	
+    
+    //volatile bool clockHold = (TWSSRA & _BV(TWCH));
+    //volatile bool receiveAck = (TWSSRA & _BV(TWRA));
+    //volatile bool collision = (TWSSRA & _BV(TWC));
+    //volatile bool busError = (TWSSRA & _BV(TWBE));
+
 	if (isAddressOrStop) {
 
 		if (addressReceived) {
@@ -371,8 +328,8 @@ ISR(TWI_SLAVE_vect)
                 _readBuffer.AppendValue(_readBuffer.ComputeCRC(address));
                 _Acknowledge(retval /*ack*/, false /*complete*/);
 			} else {
-				_writeBuffer.Reset(address);
                 _Acknowledge(true /*ack*/, false /*complete*/);
+				_writeBuffer.Reset(address);
 			}
 		} else {
 			//if (!isReadOperation) {
@@ -394,7 +351,8 @@ ISR(TWI_SLAVE_vect)
 		} else {
         
 			volatile uint8_t data = TWSD;
-			
+			_Acknowledge(true, false);
+
 			// The first byte has the command in the upper 3 bytes
 			// and the length in the lower 5 bytes.
 			bool ack = _writeBuffer.Append(data);
@@ -404,7 +362,7 @@ ISR(TWI_SLAVE_vect)
                 _ModuloWrite(_writeBuffer);
             }
 
-            _Acknowledge(ack /*ack*/, !ack /*complete*/);
+            //_Acknowledge(ack /*ack*/, !ack /*complete*/);
         }
 	}
 

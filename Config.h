@@ -17,32 +17,19 @@
 #define CPU_TINYX8
 #endif
 
-#define MODULE_TYPE_LED 1
-#define MODULE_TYPE_DPAD 2
-#define MODULE_TYPE_KNOB 3
-#define MODULE_TYPE_SERVO 4
-#define MODULE_TYPE_GPIO 5
-#define MODULE_TYPE_RTC 6
-#define MODULE_TYPE_OLED 7
-#define MODULE_TYPE_DC 8
-#define MODULE_TYPE_THERMOCOUPLE 9
-#define MODULE_TYPE_STEPPER 10
-#define MODULE_TYPE_MOTOR 11
-#define MODULE_TYPE_AC 12
 
-#define MODULE_TYPE MODULE_TYPE_RTC
+#define MODULE_TYPE_DPAD 1
+#define MODULE_TYPE_KNOB 2
+#define MODULE_TYPE_GPIO 3
+#define MODULE_TYPE_RTC 4
+#define MODULE_TYPE_OLED 5
+#define MODULE_TYPE_THERMOCOUPLE 6
+#define MODULE_TYPE_MOTOR 7
 
-// For now, define the address to be the same as the type
-#define MODULE_ADDRESS MODULE_TYPE
-
+#define MODULE_TYPE MODULE_TYPE_OLED
 
 #ifndef MODULE_TYPE
 #error No module type defined
 #endif
-
-#ifndef MODULE_ADDRESS
-#error No module address defined
-#endif
-
 
 #endif /* CONFIG_H_ */

@@ -41,8 +41,8 @@
     <com_atmel_avrdbg_tool_atmelice>
       <ToolOptions>
         <InterfaceProperties>
-          <IspClock>1920000</IspClock>
-          <DebugWireClockDiv>0</DebugWireClockDiv>
+          <IspClock>505120</IspClock>
+          <DebugWireClockDiv>8000</DebugWireClockDiv>
         </InterfaceProperties>
         <InterfaceName>debugWIRE</InterfaceName>
       </ToolOptions>
@@ -163,6 +163,9 @@
     <Compile Include="Config.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Fuses.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="I2CMaster.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -194,6 +197,7 @@
     </Compile>
     <Compile Include="Modules\OLEDModule.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-O0</CustomCompilationSetting>
     </Compile>
     <Compile Include="Modules\PotModule.cpp">
       <SubType>compile</SubType>

@@ -15,7 +15,7 @@
 #include "Clock.h"
 #include <util/delay.h>
 
-#define INVALID_TEMP 0xFFFF
+#define INVALID_TEMP -10000
 volatile int16_t currentTemp = INVALID_TEMP;
  
 const char *ModuloDeviceType = "co.modulo.thermocouple";
@@ -119,7 +119,8 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
     return false;
 }
 
-
+void ModuloReset() {
+}
 
 int main(void)
 {

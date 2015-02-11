@@ -29,41 +29,22 @@ public:
 	
 	// Construct a PWM object for the specified timer.
 	// Currently the 16 bit timers, 1 and 2, are supported.
-	explicit PWM(uint8_t timerNum);
+	explicit PWM(uint8_t timerNum, uint8_t compareChannel);
 	
 	// Set the PWM frequency. Defaults to 31250 Hz which gives
 	// an 8 bit resolution with an 8Mhz system clock.
-	void SetFrequency(float freq);
-	
-	// Set the duty cycle for odd numbered channels that are mapped
-	// to this timer. The value will be clamped between 0 and 1.
-	void SetOddDutyCycle(float dutyCycle);
-	
-	// Set the duty cycle for even numbered channels that are mapped
-	// to this timer. The value will be clamped between 0 and 1.
-	void SetEvenDutyCycle(float dutyCycle);
+	void SetFrequency(uint32_t frequency);
 
-	// Configure the specified timer output compare channel (TOCCN) to
-	// use this timer. Also sets the bit for this channel in the channel
+	// Set the value to use for this PWM.
+	void SetValue(uint16_t value);
+
+    // Sets or clears the bit for this channel in the channel
 	// output enable register.
-	void EnableOutputCompare(uint8_t channel);
-	
-	// Disabled the output compare for the specified channel.
-	void DisableOutputCompare(uint8_t channel);
-	
-	void SetOutputCompareEnable(uint8_t channel, bool enabled);
+	void SetCompareEnabled(bool enabled);
 	
 private:
 	// Set the clock select bits for this timer.
 	void _SetClockSelect(ClockSelect cs);
-	
-	// Set the output compare value for any even numbered output
-	// compare channels that are using this timer.
-	void _SetOddCompareValue(uint16_t value);
-	
-	// Set the output comapre value for any odd numbered output
-	// compare channels that are using this timer.
-	void _SetEvenCompareValue(uint16_t value);
 	
 	// Set the waveform generation mode and channel comparison modes
 	void _SetMode(uint8_t waveformGenerationMode,
@@ -76,8 +57,8 @@ private:
 	
 private:
 	uint8_t _timerNum;
+    uint8_t _channel;
 	uint16_t _topValue;
-	float _evenDutyCycle, _oddDutyCycle;
 };
 
 #endif /* TIMER_H_ */

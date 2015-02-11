@@ -18,20 +18,18 @@
 #include "PWM.h"
 #include "Clock.h"
 
-DEFINE_MODULO_CONSTANTS("Integer Labs", "Motor", 0, "http://www.integerlabs.net/docs/Motor");
-DEFINE_MODULO_FUNCTION_NAMES("EnA,FreqA,OutA1,OutA2,EnB,FreqB,OutB1,OutB2");
-DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeBool, ModuloDataTypeUInt16, ModuloDataTypeUInt16, ModuloDataTypeUInt16,
-							 ModuloDataTypeBool, ModuloDataTypeUInt16, ModuloDataTypeUInt16, ModuloDataTypeUInt16);
+
+const char *ModuloDeviceType = "co.modulo.motor";
+const uint16_t ModuloDeviceVersion = 0;
+const char *ModuloCompanyName = "Integer Labs";
+const char *ModuloProductName = "Motor Module";
+const char *ModuloDocURL = "modulo.co/docs/motor";
 
 enum FunctionCode {
-	FunctionCodeEnA,
-	FunctionCodeFreqA,
-	FunctionCodeOutA1,
-	FunctionCodeOutA2,
-	FunctionCodeEnB,
-	FunctionCodeFreqB,
-	FunctionCodeOutB1,
-	FunctionCodeOutB2,	
+	FunctionSetValue,
+    FunctionGetCurrent,
+    FunctionSetEnabled,
+    FunctionSetFrequency
 };
 
 /*
@@ -41,119 +39,161 @@ enum FunctionCode {
  * INB2 PA7 TOCC6
  * ENABLEA PB1 
  * ENABLEB PA3 TOCC2
+ * SENSEA PA0 ADC0
+ * SENSEB PB0 ADC11
  */
 
-#define INA1_PORT PORTA
-#define INA2_PORT PORTA
-#define INB1_PORT PORTB
-#define INB2_PORT PORTA
-#define ENABLEA_PORT PORTB
-#define ENABLEB_PORT PORTA
 
-#define INA1_DDR DDRA
-#define INA2_DDR DDRA
-#define INB1_DDR DDRB
-#define INB2_DDR DDRA
-#define ENABLEA_DDR DDRB
-#define ENABLEB_DDR DDRA
+volatile uint8_t *PORTS[] = {&PORTA, &PORTA, &PORTB, &PORTA};
+volatile uint8_t *DDRS[]  = {&DDRA, &DDRA, &DDRB, &DDRA};
+uint8_t MASKS[] = {_BV(2), _BV(1), _BV(2), _BV(7)};
 
-#define INA1_MASK _BV(2)
-#define INA2_MASK _BV(1)
-#define INB1_MASK _BV(2)
-#define INB2_MASK _BV(7)
-#define ENABLEA_MASK _BV(1)
-#define ENABLEB_MASK _BV(3)
+volatile uint8_t *EN_PORTS[] = {&PORTB, &PORTB, &PORTA, &PORTA};
+volatile uint8_t *EN_DDRS[]  = {&DDRB, &DDRB, &DDRA, &DDRA};
+uint8_t EN_MASKS[] = {_BV(1), _BV(1), _BV(3), _BV(3)};
 
-PWM pwmA(1);
-PWM pwmB(1);
+PWM pwm[] = {PWM(1,1), // Timer 1, output compare 1
+             PWM(1,0), // Timer 1, output compare 0
+             PWM(2,7), // Timer 2, output compare 7
+             PWM(2,6)}; // Timer 2, output compare 6
 
-void _ReadModuloValue(uint8_t functionID, ModuloBuffer *buffer) {
-	
+void ModuloReset() {
+    for (int i=0; i < 4; i++) {
+        *EN_PORTS[i] &= ~EN_MASKS[i];
+        *PORTS[i] &= ~MASKS[i];
+        *EN_DDRS[i] |= EN_MASKS[i];
+        *DDRS[i] |= MASKS[i];
+
+        pwm[i].SetValue(0);
+        pwm[i].SetCompareEnabled(true);
+      //  pwm[i].SetFrequency(1000);
+    }
 }
 
-void SetEnable(volatile uint8_t *PORT, uint8_t mask, bool value) {
-	if (value) {
-		*PORT |= mask;
-	} else {
-		*PORT &= ~mask;
-	}
+void _setValue(uint8_t channel, uint16_t value) {
+    if (channel >= 4) {
+        return;
+    }
+    pwm[channel].SetValue(value);
 }
 
-void _WriteModuloValue(uint8_t functionID, const ModuloBuffer &buffer)
-{
-	switch ((FunctionCode)functionID) {
-		case FunctionCodeEnA:
-			SetEnable(&ENABLEA_PORT, ENABLEA_MASK, buffer.Get<bool>());
-			break;
-		case FunctionCodeFreqA:
-			pwmA.SetFrequency(buffer.Get<uint16_t>());
-			break;
-		case FunctionCodeOutA1:
-			pwmA.SetOddDutyCycle(buffer.Get<uint16_t>()/65535.0);
-			SetEnable(&ENABLEA_PORT, ENABLEA_MASK, true);
-			break;
-		case FunctionCodeOutA2:
-			pwmA.SetEvenDutyCycle(buffer.Get<uint16_t>()/65535.0);
-			SetEnable(&ENABLEA_PORT, ENABLEA_MASK, true);
-			break;		
-		case FunctionCodeEnB:
-			SetEnable(&ENABLEB_PORT, ENABLEB_MASK, buffer.Get<bool>());
-			break;
-		case FunctionCodeFreqB:
-			pwmB.SetFrequency(buffer.Get<uint16_t>());
-			break;
-		case FunctionCodeOutB1:
-			pwmB.SetOddDutyCycle(buffer.Get<uint16_t>()/65535.0);
-			SetEnable(&ENABLEB_PORT, ENABLEB_MASK, true);
-			break;
-		case FunctionCodeOutB2:
-			pwmA.SetEvenDutyCycle(buffer.Get<uint16_t>()/65535.0);
-			SetEnable(&ENABLEB_PORT, ENABLEB_MASK, true);
-			break;
+void _setEnabled(uint8_t channel, bool enable) {
+    if (channel >= 4) {
+        return;
+    }
+    if (enable) {
+        *EN_PORTS[channel] |= EN_MASKS[channel];
+    } else {
+        *EN_PORTS[channel] &= ~EN_MASKS[channel];
+    }
+}
+
+void _setFrequency(uint8_t channel, uint16_t frequency) {
+    if (channel >= 4) {
+        return;
+    }
+    pwm[channel].SetFrequency(frequency);
+}
+
+
+volatile bool _analogReadStarted = false;
+
+static void _setAnalogInput(uint8_t channel) {
+    // Set the channel
+    ADMUXA = channel;
+}
+
+static void _startAnalogRead() {
+    // enable, start conversion, and 64x prescaler
+    ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADPS1) | _BV(ADPS2);
+
+    _analogReadStarted = true;
+}
+
+static uint16_t _completeAnalogRead() {
+    if (!_analogReadStarted) {
+        return 0;
+    }
+    _analogReadStarted = false;
+
+    // Wait for conversion to complete
+    while (ADCSRA & _BV(ADSC)) {
+    }
+    
+    // Must read ADCL before ADCH
+    uint8_t low = ADCL;
+    uint16_t high = ADCH;
+    
+    return (high << 8) | low;
+}
+
+uint16_t _getCurrent(uint8_t channel) {
+    if (channel < 2) {
+        _setAnalogInput(0); // ADC0
+    } else {
+        _setAnalogInput(11); // ADC11
+    }
+    _startAnalogRead();
+    return _completeAnalogRead();
+}
+
+bool ModuloWrite(const ModuloWriteBuffer &buffer) {
+	switch ((FunctionCode)buffer.GetCommand()) {
+    	case FunctionSetValue:
+            if (buffer.GetSize() != 3) {
+                return false;
+            }
+            _setValue(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(1));
+            return true;
+        case FunctionGetCurrent:
+            return buffer.GetSize() == 0;
+        case FunctionSetEnabled:
+            if (buffer.GetSize() != 3) {
+                return false;
+            }
+            _setEnabled(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
+            return true;
+        case FunctionSetFrequency:
+            if (buffer.GetSize() != 3) {
+                return false;
+            }
+            _setFrequency(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(1));
+            return true;
 	}
-	
+	return false;
+}
+
+bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+    switch (writeBuffer.GetCommand()) {
+        case FunctionGetCurrent:
+            buffer->AppendValue<uint16_t>(_getCurrent(0));
+            buffer->AppendValue<uint16_t>(_getCurrent(2));
+            return true;
+    }
+    return false;
 }
 
 int main(void)
 {
-	ModuloInit(&DDRA, &PORTA, _BV(5), _ReadModuloValue, _WriteModuloValue);
+	ModuloInit(&DDRA, &PORTA, _BV(5));
 	ClockInit();
+    ModuloReset();
+	
+    _setEnabled(0,true);
+    _setEnabled(2,true);
+    _setValue(0, 0);
+    _setValue(1, 0xFFFF/2);
+    _setValue(2, 0);
+    _setValue(3, 0xFFFF);
 
-
-	INA1_DDR |= INA1_MASK;
-	INA2_DDR |= INA2_MASK;
-	INB1_DDR |= INB1_MASK;
-	INB2_DDR |= INB2_MASK;
-	
-	pwmA.EnableOutputCompare(0);
-	pwmA.EnableOutputCompare(1);
-	pwmB.EnableOutputCompare(6);
-	pwmB.EnableOutputCompare(7);
-	
-	ENABLEA_DDR |= ENABLEA_MASK;
-	ENABLEB_DDR |= ENABLEB_MASK;
-	
-	//ENABLEA_PORT |= ENABLEA_MASK;
-	//ENABLEB_PORT |= ENABLEB_MASK;
-	
-	//ENABLEB_PORT |= ENABLEB_MASK;
-	//INB1_PORT |= INB1_MASK;
-	//INA2_PORT |= INA2_MASK;
-	
-	/*
-	pwmA.SetEvenDutyCycle(.5);
-	pwmA.SetOddDutyCycle(.5);
-	pwmB.SetEvenDutyCycle(0);
-	pwmB.SetOddDutyCycle(.5);
-	*/
-	
+    //DDRA |= _BV(2);
+    //PORTA |= _BV(2);
+    //pwm[0].SetCompareEnabled(false);
+   
 	while(1)
 	{
-		
-		//PORTB |=  _BV(1);
-
+        volatile uint16_t current = _getCurrent(0);
 		asm("nop");
-
 	}
 }
 

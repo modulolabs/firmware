@@ -14,6 +14,8 @@
 #include "OLED/Adafruit_SSD1306.h"
 #include "Modulo.h"
 #include "Clock.h"
+#include <avr/delay.h>
+
 /*
   LED - PA0
   A   - GPIO 4 - PA3
@@ -58,24 +60,59 @@ void _EndWriteArray(uint8_t functionID) {
 */
 
 #define SET_PIXELS_COMMAND 0
+#define GET_BUTTONS_COMMAND 1
 
+#define USE_PIXEL_BUFFER 0
+volatile bool pixelBufferEmpty= true;
+volatile uint8_t row, column;
+volatile uint8_t pixelBuffer[16];
 
+void ModuloReset() {
+    oled.clear();
+}
+
+uint8_t _getButtons() {
+    bool button0 = PINB & _BV(0);
+    bool button1 = PINB & _BV(1);
+    bool button2 = PINA & _BV(0);
+    return (button0 | (button1 << 1) | (button2 << 2));
+}
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+    switch(command) {
+    case GET_BUTTONS_COMMAND:
+        buffer->AppendValue<uint8_t>(_getButtons());
+        return true;
+    }
     return false;
 }
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
     switch (buffer.GetCommand()) {
+    case GET_BUTTONS_COMMAND:
+        return true;
     case SET_PIXELS_COMMAND:
         if (buffer.GetSize() != 18) {
             return false;
         }
+
+#if USE_PIXEL_BUFFER
+        if (pixelBufferEmpty) {
+            row = buffer.Get<uint8_t>(1);
+            column = buffer.Get<uint8_t>(0);
+            for(int i=2; i < 18; i++) {
+                pixelBuffer[i-2] = buffer.Get<uint8_t>(i);
+            }
+            pixelBufferEmpty = false;
+        }
+
+#else
         oled.BeginSetPixels(buffer.Get<uint8_t>(1), buffer.Get<uint8_t>(0));
         for(int i=2; i < 18; i++) {
             oled.fastSPIwrite(buffer.Get<uint8_t>(i));
         }
         oled.EndSetPixels();
+#endif
 
         return true;
         
@@ -96,7 +133,14 @@ int main(void)
     //	oled.drawChar(i % 21, i/21, i);
     //}
 	while (1) {
-	
+#if USE_PIXEL_BUFFER
+            oled.BeginSetPixels(row, column);
+            for(int i=0; i < 16; i++) {
+                oled.fastSPIwrite(pixelBuffer[i]);
+            }
+            oled.EndSetPixels();
+            pixelBufferEmpty = true;
+#endif
 	}
 }
 

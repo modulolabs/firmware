@@ -174,6 +174,7 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
             _writeRegisters();
             return true;
         case FUNCTION_GET_TIME:
+            _readRegisters();
             return buffer.GetSize() == 0;
         case FUNCTION_GET_TEMPERATURE:
             return buffer.GetSize() == 0;
@@ -207,29 +208,18 @@ const char *ModuloCompanyName = "Integer Labs";
 const char *ModuloProductName = "Real Time Clock";
 const char *ModuloDocURL = "modulo.co/docs/Clock";
 
+void ModuloReset() {
+}
 
 int main(void)
 {
 	ClockInit();
 	ModuloInit(&DDRA, &PORTA, _BV(7));
 
-    
     I2CInit(&PORTB, &DDRB, &PINB, 1,
             &PORTB, &DDRB, &PINB, 0);
 
-    
-    /*
-    calendar.years = 14;
-    calendar.months = 10;
-    calendar.days = 20;
-    calendar.weekdays = 1;
-    calendar.hours = 12;
-    calendar.minutes = 21;
-    _writeRegisters();
-    */
-
 	while (1) {
-        _readRegisters();
 		_delay_ms(100);
 	}
 }

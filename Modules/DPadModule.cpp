@@ -20,35 +20,33 @@ volatile uint8_t buttonsState = 0;
 volatile uint8_t buttonsPressed = 0;
 volatile uint8_t buttonsReleased = 0;
 
-const char *ModuloDeviceType = "co.modulo.DPad";
+const char *ModuloDeviceType = "co.modulo.dpad";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "DPad";
-const char *ModuloDocURL = "modulo.co/docs/DPad";
+const char *ModuloProductName = "DPad Module";
+const char *ModuloDocURL = "modulo.co/docs/dpad";
 
-#define FUNCTION_GET_STATE 0
+#define FUNCTION_GET_BUTTONS 0
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
    switch(command) {
-        case FUNCTION_GET_STATE:
+        case FUNCTION_GET_BUTTONS:
             uint8_t state = buttonsState;
-            uint8_t pressed = buttonsPressed;
-            uint8_t released = buttonsReleased;
             buffer->AppendValue<uint8_t>(state);
-            buffer->AppendValue<uint8_t>(pressed);
-            buffer->AppendValue<uint8_t>(released);
-            buttonsPressed = 0;
-            buttonsReleased = 0;
             return true;
     }
     return false;
 }
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
-    if (buffer.GetCommand() == FUNCTION_GET_STATE) {
-        return true;
+    if (buffer.GetCommand() == FUNCTION_GET_BUTTONS) {
+        return buffer.GetSize() == 0;
     }
     return false;
+}
+
+void ModuloReset() {
+
 }
 
 int main(void)

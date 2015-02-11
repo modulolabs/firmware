@@ -4,10 +4,17 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 
 #include "Clock.h"
 #include "PWM.h"
 #include "Modulo.h"
+
+const char *ModuloDeviceType = "co.modulo.io";
+const uint16_t ModuloDeviceVersion = 0;
+const char *ModuloCompanyName = "Integer Labs";
+const char *ModuloProductName = "IO Module";
+const char *ModuloDocURL = "modulo.co/docs/io";
 
 /*
 GPIO 0 - PA3 - PCINT3 - ADC3 - TOCC2
@@ -73,24 +80,54 @@ static const uint8_t GPIO_MASK[] = {
 	_BV(3), _BV(2), _BV(1), _BV(2), _BV(7), _BV(0), _BV(1), _BV(0)
 };
 
-uint8_t GPIO_ADC[] = {
+static const uint8_t GPIO_ADC[] = {
 	3,2,1,8,7,11,10,0
 };
 
-PWM pwmA(1);
-PWM pwmB(2);
+static volatile uint16_t _pwmValues[8] = {0,0,0,0,0,0,0,0};
 
-static bool _analogReadStarted = false;
-uint8_t _lowToHigh;
-uint8_t _highToLow;
+static volatile bool _analogReadStarted = false;
 
-void SetDirection(uint8_t dir) {
+// The first two PWMs are on Timer1, the second two are on Timer2
+// The output compares are 2, 1, 0, and 7.
+PWM pwms[] = {PWM(1,2), PWM(1,1), PWM(2,0), PWM(2,7)};
+
+void _setPWMFrequency(uint8_t pin, uint16_t frequency) {
+    if (pin < 4) {
+        pwms[pin].SetFrequency(frequency);
+    }
+}
+
+void _setDirection(uint8_t pin, bool output) {
+    if (pin >= 8) {
+        return;
+    }
+    if (output) {
+        *(GPIO_DDR[pin]) |= GPIO_MASK[pin];
+    } else {
+        *(GPIO_DDR[pin]) &= ~GPIO_MASK[pin];
+    }
+}
+
+void _setPWMValue(uint8_t pin, uint16_t value) {
+    if (pin >= 8) {
+        return;
+    }
+
+    _pwmValues[pin] = value;
+
+    if (pin < 4) {
+        pwms[pin].SetValue(value);
+        pwms[pin].SetCompareEnabled(true);
+    }
+
+    _setDirection(pin, true);
+}
+
+
+void _setDirections(uint8_t dir) {
 	for (int i=0; i < 8; i++) {
-		if (dir & _BV(i)) {
-			*(GPIO_DDR[i]) |= GPIO_MASK[i];
-		} else {
-			*(GPIO_DDR[i]) &= ~GPIO_MASK[i];
-		}
+        _setDirection(i, dir & _BV(i));
 	}
 }
 
@@ -113,20 +150,31 @@ static bool _setDigitalOutput(volatile uint8_t pin, volatile bool value) {
     } else {
         *GPIO_PORT[pin] &= ~GPIO_MASK[pin];
     }
-    *GPIO_DDR[pin] |= GPIO_MASK[pin];
+
+    if (pin < 4) {
+        pwms[pin].SetCompareEnabled(false);
+    }
+
+    _setDirection(pin, true);
     return true;
 }
 
-static bool _setPullup(uint8_t pin, bool value) {
+static void _setPullup(uint8_t pin, bool value) {
     if (pin >= 8) {
-        return false;
+        return;
     }
     if (value) {
         *GPIO_PUE[pin] |= GPIO_MASK[pin];
     } else {
         *GPIO_PUE[pin] &= ~GPIO_MASK[pin];
     }
-    return true;
+}
+
+static void _setPullups(uint8_t pullups) {
+    for (int i=0; i < 8; i++) {
+        _setPullup(i, pullups & _BV(i));
+    }
+
 }
 
 static uint8_t _getDigitalInputs() {
@@ -143,21 +191,26 @@ static bool _getDigitalInput(uint8_t pin) {
     if (pin >= 8) {
         return false;
     }
-    *GPIO_DDR[pin] &= ~GPIO_MASK[pin];
+    _setDirection(pin, false);
+
     return (*GPIO_PIN[pin] & GPIO_MASK[pin]);
 }
 
 
-static void _startAnalogRead(uint8_t pin) {
+static void _setAnalogInput(uint8_t pin) {
+    _setDirection(pin, false);
+
 	// Set the channel
 	ADMUXA = GPIO_ADC[pin];
+}
 
+static void _startAnalogRead() {
     // enable, start conversion, and 64x prescaler
 	ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADPS1) | _BV(ADPS2);
 
     _analogReadStarted = true;
 }
-		
+
 static uint16_t _completeAnalogRead() {
     if (!_analogReadStarted) {
         return 0;
@@ -171,61 +224,42 @@ static uint16_t _completeAnalogRead() {
 	// Must read ADCL before ADCH
 	uint8_t low = ADCL;
 	uint16_t high = ADCH;
-    uint16_t val = high << 8 | low;
 			
 	return (high << 8) | low;
 }
 
-void _setPWMEnable(uint8_t enableBits) {
-	pwmA.SetOutputCompareEnable(GPIO_TIMER_COMPARE[0], enableBits & _BV(0));
-	pwmA.SetOutputCompareEnable(GPIO_TIMER_COMPARE[1], enableBits & _BV(1));
-	pwmB.SetOutputCompareEnable(GPIO_TIMER_COMPARE[2], enableBits & _BV(2));
-	pwmB.SetOutputCompareEnable(GPIO_TIMER_COMPARE[3], enableBits & _BV(3));
+
+void _updateSoftPWM() {
+    uint32_t softPWMFrequency = 50;
+    volatile uint32_t t = micros()*softPWMFrequency*655/10000;
+    t &= 0xFFFF;
+    for (int i=5; i < 6; i++) {
+        if (_pwmValues[i] == 0 or _pwmValues[i] == 0xFFFF) {
+            continue;
+        }
+
+        if (t < _pwmValues[i]) {
+            *GPIO_PORT[i] |= GPIO_MASK[i];
+        } else {
+            *GPIO_PORT[i] &= ~GPIO_MASK[i];
+        }
+    }
 }
 
-void _setPWMValue(uint8_t pin, uint16_t value) {
-    *GPIO_DDR[pin] |= GPIO_MASK[pin];
-	switch(pin) {
-		case 0:
-            pwmA.SetOutputCompareEnable(GPIO_TIMER_COMPARE[0], true);
-			pwmA.SetEvenDutyCycle(value/65535.0);
-			break;
-		case 1:
-            pwmA.SetOutputCompareEnable(GPIO_TIMER_COMPARE[1], true);
-			pwmA.SetOddDutyCycle(value/65535.0);
-			break;
-		case 2:
-            pwmB.SetOutputCompareEnable(GPIO_TIMER_COMPARE[2], true);
-			pwmB.SetEvenDutyCycle(value/65535.0);
-			break;
-		case 3:
-            pwmB.SetOutputCompareEnable(GPIO_TIMER_COMPARE[3], true);
-			pwmB.SetOddDutyCycle(value/65535.0);
-			break;
-	}
-}
-
-void _setPWMFrequencyA(uint16_t frequency) {
-	pwmA.SetFrequency(frequency);
-}
-
-void _setPWMFrequencyB(uint16_t frequency) {
-	pwmB.SetFrequency(frequency);
-}
-
-DEFINE_MODULO_CONSTANTS("Integer Labs", "IO", 0, "http://www.integerlabs.net/docs/NavButtons");
-DEFINE_MODULO_FUNCTION_NAMES("State,Pressed,Released");
-DEFINE_MODULO_FUNCTION_TYPES(ModuloDataTypeBitfield8, ModuloDataTypeBitfield8, ModuloDataTypeBitfield8);
 
 enum GPIOCommands {
     FUNCTION_GET_DIGITAL_INPUT,
     FUNCTION_GET_DIGITAL_INPUTS,
     FUNCTION_GET_ANALOG_INPUT,
+    FUNCTION_SET_DATA_DIRECTION,
+    FUNCTION_SET_DATA_DIRECTIONS,
     FUNCTION_SET_DIGITAL_OUTPUT,
     FUNCTION_SET_DIGITAL_OUTPUTS,
     FUNCTION_SET_PWM_OUTPUT,
     FUNCTION_SET_PULLUP,
+    FUNCTION_SET_PULLUPS,
     FUNCTION_SET_DEBOUNCE,
+    FUNCTION_SET_DEBOUNCES,
     FUNCTION_SET_PWM_FREQUENCY
 };
 
@@ -240,7 +274,21 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
             if (buffer.GetSize() != 2) {
                 return false;
             }
-            _startAnalogRead(buffer.Get<uint8_t>(0));
+            _setAnalogInput(buffer.Get<uint8_t>(0));
+            _startAnalogRead();
+            return true;
+        case FUNCTION_SET_DATA_DIRECTION:
+            if (buffer.GetSize() != 2) {
+                return false;
+            }
+            //_setDataDirection(buffer.Get<uint8_t>(0),
+            //                  buffer.Get<uint8_t>(1));
+            return true;
+        case FUNCTION_SET_DATA_DIRECTIONS:
+            if (buffer.GetSize() != 1) {
+                return false;
+            }
+            //_setDataDirections(buffer.Get<uint8_t>(0));
             return true;
         case FUNCTION_SET_DIGITAL_OUTPUT:
             if (buffer.GetSize() != 2) {
@@ -270,13 +318,30 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
             }
             _setPullup(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
             return true;
+        case FUNCTION_SET_PULLUPS:
+            if (buffer.GetSize() != 1) {
+                return false;
+            }
+            _setPullups(buffer.Get<uint8_t>(0));
+            return true;
         case FUNCTION_SET_DEBOUNCE:
             if (buffer.GetSize() != 2) {
                 return false;
             }
-            return false;
+            //_setDebounce(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
+            return true;
+        case FUNCTION_SET_DEBOUNCES:
+            if (buffer.GetSize() != 1) {
+                return false;
+            }
+            //_setDebounces(buffer.Get<uint8_t>(0));
+            return true;
         case FUNCTION_SET_PWM_FREQUENCY:
-            return false;
+            if (buffer.GetSize() != 3) {
+                return false;
+            }
+            _setPWMFrequency(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
+            return true;
     }
     return false;
 }
@@ -296,12 +361,55 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
     return false;
 }
 
+void ModuloReset() {
+    _setDirections(0);
+    _setPullups(0);
+    pwms[0].SetCompareEnabled(false);
+    pwms[1].SetCompareEnabled(false);
+    pwms[2].SetCompareEnabled(false);
+    pwms[3].SetCompareEnabled(false);
+}
+
+uint16_t capSense(uint8_t pin) {
+    // Make the pin an input and enable the pullup resistor
+    // This charges the external capacitor to VCC
+    *(GPIO_PUE[pin]) |= GPIO_MASK[pin];
+    _delay_ms(1);
+
+    // Do an A/D conversion with 0V as the input.
+    // This charges the internal sample/hold capacitor to 0V
+    ADMUXA = 14;
+    ADMUXB = 0;
+    _startAnalogRead();
+    _completeAnalogRead();
+
+    // Disable the pullup
+    *(GPIO_PUE[pin]) &= ~GPIO_MASK[pin];
+
+    // Do an A/D conversion from the input pin. This connects
+    // the external and internal capacitors in parallel, so the
+    // voltage will be proportional to the external capacitance
+    _setAnalogInput(pin);
+    _startAnalogRead();
+    volatile uint16_t result = _completeAnalogRead();
+
+    asm("nop");
+    return result;
+
+}
+
 int main(void)
 {
 	ClockInit();
 	ModuloInit(&DDRA, &PORTA, _BV(5));
 
 	while(1) {
+//        _updateSoftPWM();
+        if (capSense(0) > 750) {
+            ModuloSetStatus(ModuloStatusOn);
+        } else {
+            ModuloSetStatus(ModuloStatusOff);
+        }
 	}
 }
 

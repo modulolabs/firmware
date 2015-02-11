@@ -87,15 +87,17 @@ void HSVToRGB(float h, float s, float v,
 }
 
 
-PWM pwm1(1);
-PWM pwm2(2);
+PWM pwmRed(1,0);
+PWM pwmGreen(1,1);
+PWM pwmBlue(2,2);
 
-void SetRGB(float r, float g, float b) {
-    // Apply a gamma of 2.2 and set the duty cycle
+// Input range is 0-255
+void SetRGB(uint16_t r, uint16_t g, uint16_t b) {
+    // Square the values to approximate a gamma curve
     // The duty cycle is inverted because the LEDs are on when the output is low.
-    pwm1.SetEvenDutyCycle(1.0-pow(r, 2.2));
-    pwm1.SetOddDutyCycle(1.0-pow(g, 2.2));
-    pwm2.SetEvenDutyCycle(1.0-pow(b, 2.2));
+    pwmRed.SetValue(65535-r*r);
+    pwmGreen.SetValue(65535-g*g);
+    pwmBlue.SetValue(65535-b*b);
 }
 
 void SetHSV(float h, float s, float v) {
@@ -171,15 +173,16 @@ private:
     int16_t _position;
 };
 
-const char *ModuloDeviceType = "co.modulo.Knob";
+const char *ModuloDeviceType = "co.modulo.knob";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Knob";
-const char *ModuloDocURL = "modulo.co/docs/Knob";
+const char *ModuloProductName = "Knob Module";
+const char *ModuloDocURL = "modulo.co/docs/knob";
 
-#define FUNCTION_GET_STATE  0
-#define FUNCTION_ADD_OFFSET 1
-#define FUNCTION_SET_COLOR  2
+#define FUNCTION_GET_BUTTON  0
+#define FUNCTION_GET_POSITION 1
+#define FUNCTION_ADD_OFFSET 2
+#define FUNCTION_SET_COLOR  3
 
 volatile uint8_t _buttonState = false;
 volatile uint8_t _buttonPressed = false;
@@ -189,21 +192,21 @@ volatile Decoder _decoder;
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
     switch(buffer.GetCommand()) {
-        case FUNCTION_GET_STATE:
-            return true;
+        case FUNCTION_GET_BUTTON:
+            return buffer.GetSize() == 0;
         case FUNCTION_ADD_OFFSET:
             if (buffer.GetSize() != 2) {
                 return false;
             }
             _decoder.AddPositionOffset(buffer.Get<int16_t>(0));
-            break;
+            return true;
         case FUNCTION_SET_COLOR:
             if (buffer.GetSize() != 3) {
                 return false;
             }
-            SetRGB(buffer.Get<uint8_t>(0)/255.,
-                   buffer.Get<uint8_t>(1)/255.,
-                   buffer.Get<uint8_t>(2)/255.);
+            SetRGB(buffer.Get<uint8_t>(0),
+                   buffer.Get<uint8_t>(1),
+                   buffer.Get<uint8_t>(2));
             return true;
     }
     return false;
@@ -211,22 +214,34 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
     bool state = _buttonState;
-    bool pressed = _buttonPressed;
-    bool released = _buttonReleased;
     switch(writeBuffer.GetCommand()) {
-        case FUNCTION_GET_STATE:
-        buffer->AppendValue<int16_t>(_decoder.GetPosition());
+    case FUNCTION_GET_BUTTON:
         buffer->AppendValue<uint8_t>(state);
-        buffer->AppendValue<uint8_t>(pressed);
-        buffer->AppendValue<uint8_t>(released);
-        _buttonPressed = false;
-        _buttonReleased = false;
+        return true;
+    case FUNCTION_GET_POSITION:
+        buffer->AppendValue<int16_t>(_decoder.GetPosition());
         return true;
     }
     return false;
 }
 
+void ModuloReset() {
+    _decoder.AddPositionOffset(-_decoder.GetPosition());
 
+
+    // Enable pullups on the A/B pins
+    PUEB |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
+    LED_PORT |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
+    LED_DDR |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
+    
+    SetRGB(0,0,0);
+
+    _delay_ms(100);
+
+    pwmRed.SetCompareEnabled(true);
+    pwmGreen.SetCompareEnabled(true);
+    pwmBlue.SetCompareEnabled(true);
+}
 
 int main(void)
 {
@@ -234,21 +249,9 @@ int main(void)
 	//Init();
     ClockInit();
     ModuloInit(&DDRA, &PORTA, _BV(7));
-    ModuloSetStatus(ModuloStatusBlinking);
-    
-	// Enable pullups on the A/B pins
-	PUEB |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
-
-    // Set LED pins to outputs
-    LED_DDR |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
-    
-    pwm1.EnableOutputCompare(0); // Red
-    pwm1.EnableOutputCompare(1); // Green
-    pwm2.EnableOutputCompare(2); // Blue
 
     Debouncer debouncer;
 
-    float hue = 0;
 	while(1)
 	{
         _decoder.Update(INPUT_PINS & _BV(ENCA_PIN), INPUT_PINS & _BV(ENCB_PIN));
