@@ -69,12 +69,14 @@ volatile uint8_t pixelBuffer[16];
 
 void ModuloReset() {
     oled.clear();
+	PUEB |= _BV(0) | _BV(1);
+	PUEA |= _BV(0);
 }
 
 uint8_t _getButtons() {
-    bool button0 = PINB & _BV(0);
-    bool button1 = PINB & _BV(1);
-    bool button2 = PINA & _BV(0);
+    bool button0 = !(PINB & _BV(0));
+    bool button1 = !(PINB & _BV(1));
+    bool button2 = !(PINA & _BV(0));
     return (button0 | (button1 << 1) | (button2 << 2));
 }
 

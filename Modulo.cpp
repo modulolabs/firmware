@@ -62,6 +62,7 @@ uint16_t ModuloGetDeviceID() {
 static void _SetDeviceAddress(uint8_t address) {
     _deviceAddress = address;
 	TWSA = (address << 1);
+	ModuloSetStatus(ModuloStatusOff);
 }
 
 
@@ -94,6 +95,8 @@ void ModuloInit(
 #endif
 
     ModuloReset();
+	
+	ModuloSetStatus(ModuloStatusBlinking);
 }
 
 

@@ -9,7 +9,7 @@
 
  FUSES =
  {
-     0xC2, // .low
-     0xDF, // .hight
+     0xE2, // .low
+     0xDF, // .high
      0xFF, // .extended
  };

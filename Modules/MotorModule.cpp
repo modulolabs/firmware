@@ -179,20 +179,22 @@ int main(void)
 	ClockInit();
     ModuloReset();
 	
+	/*
     _setEnabled(0,true);
     _setEnabled(2,true);
     _setValue(0, 0);
     _setValue(1, 0xFFFF/2);
     _setValue(2, 0);
     _setValue(3, 0xFFFF);
-
+*/
+	
     //DDRA |= _BV(2);
     //PORTA |= _BV(2);
     //pwm[0].SetCompareEnabled(false);
    
 	while(1)
 	{
-        volatile uint16_t current = _getCurrent(0);
+        //volatile uint16_t current = _getCurrent(0);
 		asm("nop");
 	}
 }

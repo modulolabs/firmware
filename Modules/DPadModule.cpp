@@ -81,7 +81,7 @@ int main(void)
 		interrupts();
 
 
-		ModuloSetStatus(buttonsState ? ModuloStatusOn : ModuloStatusOff);
+		//ModuloSetStatus(buttonsState ? ModuloStatusOn : ModuloStatusOff);
 		
 		_delay_ms(1);
 	}
