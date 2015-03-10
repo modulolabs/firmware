@@ -41,7 +41,7 @@
 #define STATUS_PIN 7
 
 
-
+/*
 void HSVToRGB(float h, float s, float v,
               float *r, float *g, float *b) {
     *r = *g = *b = 0;
@@ -86,6 +86,7 @@ void HSVToRGB(float h, float s, float v,
     *b += m;
 }
 
+*/
 
 PWM pwmRed(1,0);
 PWM pwmGreen(1,1);
@@ -100,12 +101,13 @@ void SetRGB(uint16_t r, uint16_t g, uint16_t b) {
     pwmBlue.SetValue(65535-b*b);
 }
 
+/*
 void SetHSV(float h, float s, float v) {
     float r, g, b;
     HSVToRGB(h, s, v, &r, &g, &b);
     SetRGB(r,g,b);
 }
-
+*/
 
 class Debouncer {
 public:
@@ -241,6 +243,14 @@ void ModuloReset() {
     pwmRed.SetCompareEnabled(true);
     pwmGreen.SetCompareEnabled(true);
     pwmBlue.SetCompareEnabled(true);
+}
+
+
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	return false;
+}
+
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 }
 
 int main(void)

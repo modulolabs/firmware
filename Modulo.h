@@ -13,7 +13,6 @@
 #include <avr/interrupt.h>
 #include <util/crc16.h>
 #include <util/atomic.h>
-#include <math.h>
 #include <string.h>
 
 class ModuloWriteBuffer;
@@ -22,29 +21,14 @@ class ModuloReadBuffer;
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
 bool ModuloWrite(const ModuloWriteBuffer &buffer);
 void ModuloReset();
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData);
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData);
 
 extern const char *ModuloDeviceType;
 extern const uint16_t ModuloDeviceVersion;
 extern const char *ModuloCompanyName;
 extern const char *ModuloProductName;
 extern const char *ModuloDocURL;
-
-enum ModuloDataType {
-	ModuloDataTypeNone,
-	ModuloDataTypeBool,
-	ModuloDataTypeUInt8,
-	ModuloDataTypeUInt16,
-	ModuloDataTypeUInt32,
-	ModuloDataTypeInt8,
-	ModuloDataTypeInt16,
-	ModuloDataTypeInt32,
-	ModuloDataTypeString,
-	ModuloDataTypeStream,
-	ModuloDataTypeFloat,
-	ModuloDataTypeBitfield8,
-	ModuloDataTypeBitfield16,
-	ModuloDataTypeBitfield32
-};
 
 enum ModuloStatus {
 	ModuloStatusOff,

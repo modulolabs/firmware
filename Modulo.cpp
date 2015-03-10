@@ -36,8 +36,9 @@ volatile uint16_t _deviceID = 0xFFFF;
 #define BroadcastCommandGetProductName 7
 #define BroadcastCommandGetDocURL 8
 #define BroadcastCommandGetDocURLContinued 9
-#define BroadcastCommandGetInterrupt 10
+#define BroadcastCommandGetEvent 10
 #define BroadcastCommandSetStatusLED 11
+#define BroadcastCommandClearEvent 12
 
 
 uint16_t ModuloGetDeviceID() {
@@ -122,6 +123,7 @@ void ModuloUpdateStatusLED() {
 				*_statusPort ^= _statusMask;
 			}
 			break;
+#if 0
 		case ModuloStatusBreathing:
 			_statusCounter = (_statusCounter+1) % 10;
 			if (_statusCounter == 0) {
@@ -138,32 +140,9 @@ void ModuloUpdateStatusLED() {
 				*_statusPort &= ~_statusMask;
 			}
 			break;
+#endif
 	}
-}
 
-uint8_t _GetNumBytes(ModuloDataType dataType) {
-	switch(dataType) {
-		case ModuloDataTypeNone:
-			return 0;
-		case ModuloDataTypeBool:
-		case ModuloDataTypeUInt8:
-		case ModuloDataTypeInt8:
-		case ModuloDataTypeBitfield8:
-			return 1;	
-		case ModuloDataTypeUInt16:
-		case ModuloDataTypeInt16:
-		case ModuloDataTypeBitfield16:
-			return 2;	
-		case ModuloDataTypeUInt32:
-		case ModuloDataTypeInt32:
-		case ModuloDataTypeBitfield32:
-		case ModuloDataTypeFloat:
-			return 4;
-		case ModuloDataTypeString:
-		case ModuloDataTypeStream:
-			return 255;
-	}
-	return 1;
 }
 
 
@@ -189,6 +168,10 @@ ModuloWriteBuffer _writeBuffer;
 ModuloReadBuffer _readBuffer;
 
 static bool _shouldReplyToBroadcastRead = false;
+
+static uint8_t _eventCode = 0;
+static uint16_t _eventData = 0;
+
 
 static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
     _shouldReplyToBroadcastRead = false;
@@ -239,11 +222,18 @@ static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
                     return true;
                 }
                 break;
-            case BroadcastCommandGetInterrupt:
-                // XXX: not implemented
-                return false;
-                
-
+            case BroadcastCommandGetEvent:
+				if (ModuloGetEvent(&_eventCode, &_eventData)) {
+					_shouldReplyToBroadcastRead = true;
+					return true;
+				}
+                break;
+			case BroadcastCommandClearEvent:
+                if (buffer.GetSize() == 5 and buffer.Get<uint16_t>(1) == ModuloGetDeviceID()) {
+					ModuloClearEvent(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(3));
+                    return true;
+                }
+                break;				
         }
         return false;
     }
@@ -290,9 +280,11 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
             case BroadcastCommandGetDocURLContinued:
                 readBuffer->AppendString(ModuloDocURL);
                 return true;
-            case BroadcastCommandGetInterrupt:
-                // XXX: Not implemented
-                return false;
+            case BroadcastCommandGetEvent:
+				readBuffer->AppendValue<uint8_t>(_eventCode);
+				readBuffer->AppendValue<uint16_t>(ModuloGetDeviceID());
+				readBuffer->AppendValue<uint16_t>(_eventData);
+                return true;
         }
         return false;
     }

@@ -148,7 +148,7 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
         case FunctionGetCurrent:
             return buffer.GetSize() == 0;
         case FunctionSetEnabled:
-            if (buffer.GetSize() != 3) {
+            if (buffer.GetSize() != 2) {
                 return false;
             }
             _setEnabled(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
@@ -172,13 +172,23 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
     }
     return false;
 }
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	return false;
+}
+
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+}
 
 int main(void)
 {
 	ModuloInit(&DDRA, &PORTA, _BV(5));
 	ClockInit();
     ModuloReset();
-	
+/*	
+	_setEnabled(0, true);
+	_setValue(0, 0);
+	_setValue(1, 0xFFFF/2);
+	*/
 	/*
     _setEnabled(0,true);
     _setEnabled(2,true);

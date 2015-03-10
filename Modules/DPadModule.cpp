@@ -27,6 +27,9 @@ const char *ModuloProductName = "DPad Module";
 const char *ModuloDocURL = "modulo.co/docs/dpad";
 
 #define FUNCTION_GET_BUTTONS 0
+#define FUNCTION_CLEAR_EVENT 1
+
+#define EVENT_BUTTONS_CHANGED 0
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
    switch(command) {
@@ -39,14 +42,35 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 }
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
-    if (buffer.GetCommand() == FUNCTION_GET_BUTTONS) {
-        return buffer.GetSize() == 0;
-    }
+	switch (buffer.GetCommand()) {
+		case FUNCTION_GET_BUTTONS:
+			return buffer.GetSize() == 0;
+		case FUNCTION_CLEAR_EVENT:
+			if (buffer.GetSize() == 2) {
+				buttonsPressed &= ~(buffer.Get<uint8_t>(0));
+				buttonsReleased &= ~(buffer.Get<uint8_t>(1));
+			}
+			return true;
+	}
     return false;
 }
 
 void ModuloReset() {
 
+}
+
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	if (buttonsPressed or buttonsReleased) {
+		*eventCode = EVENT_BUTTONS_CHANGED;
+		*eventData = (buttonsPressed << 8) | buttonsReleased;
+		return true;
+	}
+	return false;
+}
+
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+	buttonsPressed &= ~(eventData >> 8);
+	buttonsReleased &= ~(eventData & 0xFF);
 }
 
 int main(void)
@@ -62,7 +86,6 @@ int main(void)
 	while(1)
 	{
         noInterrupts();
-
 
         uint8_t newState = (PINA & 0xF) | ((PINB & 1) << 4);
 	    newState ^= 0x1F;
@@ -80,9 +103,9 @@ int main(void)
 		buttonsState = newState;
 		interrupts();
 
-
-		//ModuloSetStatus(buttonsState ? ModuloStatusOn : ModuloStatusOff);
-		
+		// Limiting the refresh rate to 1ms helps debounce, though
+		// bounces appear to be very rare with the buttons used on
+		// this module anyway.
 		_delay_ms(1);
 	}
 }

@@ -42,7 +42,7 @@
       <ToolOptions>
         <InterfaceProperties>
           <IspClock>250000</IspClock>
-          <DebugWireClockDiv>8000</DebugWireClockDiv>
+          <DebugWireClockDiv>0</DebugWireClockDiv>
         </InterfaceProperties>
         <InterfaceName>debugWIRE</InterfaceName>
       </ToolOptions>
@@ -63,7 +63,7 @@
       </ToolNumber>
       <ToolName>Simulator</ToolName>
     </com_atmel_avrdbg_tool_simulator>
-    <UseGdb>False</UseGdb>
+    <UseGdb>True</UseGdb>
     <preserveEEPROM>true</preserveEEPROM>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -101,11 +101,7 @@
         <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
         <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
         <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
-        <avrgcccpp.linker.libraries.Libraries>
-          <ListValues>
-            <Value>libm</Value>
-          </ListValues>
-        </avrgcccpp.linker.libraries.Libraries>
+        <avrgcccpp.linker.miscellaneous.LinkerFlags>-Wl,--cref</avrgcccpp.linker.miscellaneous.LinkerFlags>
       </AvrGccCpp>
     </ToolchainSettings>
   </PropertyGroup>
@@ -200,6 +196,9 @@
     <Compile Include="Modules\PotModule.cpp">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Modules\RadioModule.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Modules\RTCModule.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-O0</CustomCompilationSetting>
@@ -223,9 +222,9 @@
     <Compile Include="Modulo.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="NeoPixel.cpp">
+    <None Include="NeoPixel.cpp">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="NeoPixel.h">
       <SubType>compile</SubType>
     </Compile>
