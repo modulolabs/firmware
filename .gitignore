@@ -20,5 +20,12 @@
 *.out
 *.app
 
+
+.DS_Store
+
 Debug
 Release
+
+ARM/DEBUG
+ARM/Release
+
