@@ -22,7 +22,7 @@
 const char *ModuloDeviceType = "co.modulo.motor";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Motor Module";
+const char *ModuloProductName = "Motor";
 const char *ModuloDocURL = "modulo.co/docs/motor";
 
 enum FunctionCode {
