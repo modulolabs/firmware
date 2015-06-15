@@ -24,6 +24,7 @@ static volatile uint8_t *_statusPort = NULL;
 static volatile uint8_t _statusMask = 0;
 static uint8_t _statusCounter = 0;
 static uint16_t _statusBreathe = 0;
+static uint16_t _deviceID_EEPROM EEMEM = 0xFFFF;
 volatile uint16_t _deviceID = 0xFFFF;
 
 #define BroadcastCommandGlobalReset 0
@@ -48,13 +49,13 @@ uint16_t ModuloGetDeviceID() {
 	}
 	
 	// Load the device ID from EEPROM.
-	_deviceID = eeprom_read_word(0);
+	_deviceID = eeprom_read_word(&_deviceID_EEPROM);
 	
 	// If nothing was stored in the EEPROM, then generate a random device id.
 	while (_deviceID == 0xFFFF) {
 		uint32_t r = GenerateRandomNumber();
 		_deviceID = r ^ (r >> 16); // xor the low and high words to conserve entropy
-		eeprom_write_word(0, _deviceID);
+		eeprom_write_word(&_deviceID_EEPROM, _deviceID);
 	}
 	
 	return _deviceID;
@@ -96,6 +97,7 @@ void ModuloInit(
 #endif
 
     ModuloReset();
+	_SetDeviceAddress(0);
 	
 	ModuloSetStatus(ModuloStatusBlinking);
 }
@@ -292,7 +294,6 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
 
     return ModuloRead(command, writeBuffer, readBuffer);
 }
-
 
 
 // The interrupt service routine. Examine registers and dispatch to the handlers above.
