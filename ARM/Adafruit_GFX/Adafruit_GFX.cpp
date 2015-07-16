@@ -52,7 +52,7 @@ Adafruit_GFX::Adafruit_GFX()
   wrap      = true;
 }
 
-uint16_t Adafruit_GFX::Color565(uint8_t r, uint8_t g, uint8_t b) {
+uint16_t Color::Color565() {
 	uint16_t c;
 	c = r >> 3;
 	c <<= 6;
@@ -245,10 +245,16 @@ void Adafruit_GFX::drawFastHLine(int16_t x, int16_t y,
 
 void Adafruit_GFX::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
 			    uint16_t color) {
-  // Update in subclasses if desired!
-  for (int16_t i=x; i<x+w; i++) {
-    drawFastVLine(i, y, h, color);
-  }
+	int xMin = x > 0 ? x : 0;
+	int xMax = x+w < WIDTH ? x+w : WIDTH;
+	int yMin = y > 0 ? y : 0;
+	int yMax = y+h < HEIGHT ? y+h : HEIGHT;
+	
+	for (int xi = xMin; xi < xMax ; xi++) {
+		for (int yi = yMin ; yi < yMax; yi++) {
+			_pixels[xi+yi*WIDTH] = color;
+		}
+	}
 }
 
 void Adafruit_GFX::fillScreen(uint16_t color) {
@@ -434,7 +440,7 @@ void Adafruit_GFX::write(uint8_t c) {
   } else if (c == '\r') {
     // skip em
   } else {
-    drawChar(cursor_x, cursor_y, c, textcolor, textbgcolor, textsize);
+    drawChar(cursor_x, cursor_y, c, textcolor, textbgcolor);
     cursor_x += textsize*6;
     if (wrap && (cursor_x > (_width - textsize*6))) {
       cursor_y += textsize*8;
@@ -448,7 +454,8 @@ void Adafruit_GFX::write(uint8_t c) {
 
 // Draw a character
 void Adafruit_GFX::drawChar(int16_t x, int16_t y, unsigned char c,
-			    uint16_t color, uint16_t bg, uint8_t size) {
+			    uint16_t color, uint16_t bg) {
+	int size = textsize;
 
   if((x >= _width)            || // Clip right
      (y >= _height)           || // Clip bottom
@@ -470,11 +477,13 @@ void Adafruit_GFX::drawChar(int16_t x, int16_t y, unsigned char c,
           fillRect(x+(i*size), y+(j*size), size, size, color);
         } 
       } else if (bg != color) {
+		  /*
         if (size == 1) // default size
           drawPixel(x+i, y+j, bg);
         else {  // big size
           fillRect(x+i*size, y+j*size, size, size, bg);
         }
+		*/
       }
       line >>= 1;
     }
@@ -538,3 +547,10 @@ void Adafruit_GFX::invertDisplay(bool i) {
   // Do nothing, must be subclassed if supported
 }
 
+int Adafruit_GFX::charWidth(int textSize) {
+	return 6*textSize;
+}
+
+int Adafruit_GFX::charHeight(int textSize) {
+	return 8*textSize;
+}	

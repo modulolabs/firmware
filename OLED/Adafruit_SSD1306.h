@@ -16,6 +16,8 @@ BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
 
+#include "Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_OLED)
 
 #define SSD1306_I2C_ADDRESS   0x3C	// 011110+SA0+RW - 0x3C or 0x3D
 // Address for 128x32 is 0x3C
@@ -145,3 +147,5 @@ class Adafruit_SSD1306 {
 	volatile uint8_t *mosiport, *clkport, *csport, *dcport, *resetport;
 	uint8_t mosipinmask, clkpinmask, cspinmask, dcpinmask, resetpinmask;
 };
+
+#endif

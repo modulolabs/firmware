@@ -31,6 +31,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_OLED)
+
 #include "Adafruit_GFX.h"
 #include "glcdfont.c"
 #include <stdlib.h>
@@ -487,3 +489,4 @@ void Adafruit_GFX::invertDisplay(bool i) {
   // Do nothing, must be subclassed if supported
 }
 
+#endif

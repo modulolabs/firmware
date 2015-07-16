@@ -18,6 +18,8 @@ All text above, and the splash screen below must be included in any redistributi
 
 #include "Config.h"
 
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_OLED)
+
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include <stdlib.h>
@@ -418,3 +420,5 @@ void Adafruit_SSD1306::fastSPIwrite(uint8_t d) {
 	while (!(SPSR & _BV(SPIF))) {
 	}
 }
+
+#endif

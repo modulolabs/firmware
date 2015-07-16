@@ -178,7 +178,7 @@ private:
 const char *ModuloDeviceType = "co.modulo.knob";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Knob Module";
+const char *ModuloProductName = "Knob";
 const char *ModuloDocURL = "modulo.co/docs/knob";
 
 #define FUNCTION_GET_BUTTON  0
@@ -228,6 +228,7 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 }
 
 void ModuloReset() {
+	
     _decoder.AddPositionOffset(-_decoder.GetPosition());
 
 
@@ -236,13 +237,18 @@ void ModuloReset() {
     LED_PORT |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
     LED_DDR |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
     
+
+
     SetRGB(0,0,0);
 
-    _delay_ms(100);
+
+    //_delay_ms(100);
+
 
     pwmRed.SetCompareEnabled(true);
     pwmGreen.SetCompareEnabled(true);
     pwmBlue.SetCompareEnabled(true);
+	
 }
 
 
@@ -277,7 +283,7 @@ int main(void)
         _buttonState = debouncer.Get();
         interrupts();
 
-        //_delay_ms(10);
+       // _delay_ms(10);
 
         /*
         

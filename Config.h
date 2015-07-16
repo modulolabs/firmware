@@ -25,11 +25,19 @@
 #define MODULE_TYPE_OLED 5
 #define MODULE_TYPE_THERMOCOUPLE 6
 #define MODULE_TYPE_MOTOR 7
+#define MODULE_TYPE_RADIO 8
+#define MODULE_TYPE_JOYSTICK 9
+#define MODULE_TYPE_IR 10
+#define MODULE_TYPE_IMU 11
 
-#define MODULE_TYPE MODULE_TYPE_OLED
+#define MODULE_TYPE MODULE_TYPE_IR
 
 #ifndef MODULE_TYPE
 #error No module type defined
+#endif
+
+#if MODULE_TYPE == 0
+#error Invalid module type
 #endif
 
 #endif /* CONFIG_H_ */

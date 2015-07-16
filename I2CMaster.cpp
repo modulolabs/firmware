@@ -25,6 +25,8 @@ static void _start();
 static bool _readBit();
 static void _writeBit(bool bit);
 
+TwoWire Wire;
+
 void I2CInit(volatile uint8_t *sdaPORT, volatile uint8_t *sdaDDR, volatile uint8_t *sdaPIN, uint8_t sdaPin,
              volatile uint8_t *sclPORT, volatile uint8_t *sclDDR, volatile uint8_t *sclPIN, uint8_t sclPin) {
 
@@ -146,3 +148,38 @@ static bool _readBit() {
     // Leaves SCL low, SDA high
 	return bit;
 }
+
+void TwoWire::beginTransmission(uint8_t address) {
+    I2CBegin(address, false);
+}
+
+int TwoWire::write(uint8_t c) {
+    return I2CWrite(c);
+}
+
+uint8_t TwoWire::endTransmission() {
+    I2CStop();
+}
+
+
+void TwoWire::requestFrom(uint8_t address, uint8_t len) {
+    _bytesRemaining = len;
+    I2CBegin(address, true);
+}
+
+uint8_t TwoWire::available() {
+    return _bytesRemaining;
+}
+
+uint8_t TwoWire::read() {
+    if (_bytesRemaining == 0) {
+        return 0;
+    }
+    _bytesRemaining--;
+    uint8_t c = I2CRead(_bytesRemaining);
+    if (_bytesRemaining == 0) {
+        I2CStop();
+    }
+    return c;
+}
+

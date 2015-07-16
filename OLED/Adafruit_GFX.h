@@ -1,6 +1,9 @@
 #ifndef _ADAFRUIT_GFX_H
 #define _ADAFRUIT_GFX_H
 
+#include "Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_OLED)
+
 #include <inttypes.h>
 
 class Adafruit_GFX {
@@ -77,4 +80,5 @@ class Adafruit_GFX {
     wrap; // If set, 'wrap' text at right edge of display
 };
 
+#endif
 #endif // _ADAFRUIT_GFX_H

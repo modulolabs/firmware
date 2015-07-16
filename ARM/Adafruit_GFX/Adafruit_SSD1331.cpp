@@ -197,23 +197,31 @@ void Adafruit_SSD1331::refresh() {
 	config_port_pin.direction = PORT_PIN_DIR_OUTPUT;
 	port_group_set_config(&PORTA, 0xFF, &config_port_pin);
 
+#if 0
+	for (int i=WIDTH*HEIGHT-1; i >= 0; i--) {
+#else
 	for (int i=0; i < WIDTH*HEIGHT; i++) {
+#endif
 		uint16_t color = _pixels[i];
 			// Bring WR low
-		port_pin_set_output_level(WR_PIN, false);	
+		PORTA.OUTCLR.reg = _BV(WR_PIN);
+		//port_pin_set_output_level(WR_PIN, false);	
 	
 		port_group_set_output_level(&PORTA, 0xFF, color >> 8);
 	
 		// Bring WR high. This is the latch command
-		port_pin_set_output_level(WR_PIN, true);
+		//port_pin_set_output_level(WR_PIN, true);
+		PORTA.OUTSET.reg = _BV(WR_PIN);
 	
 		// Bring WR low
-		port_pin_set_output_level(WR_PIN, false);	
+		//port_pin_set_output_level(WR_PIN, false);	
+		PORTA.OUTCLR.reg = _BV(WR_PIN);
 	
 		port_group_set_output_level(&PORTA, 0xFF, color & 0xFF);
 	
 		// Bring WR high. This is the latch command
-		port_pin_set_output_level(WR_PIN, true);
+		//port_pin_set_output_level(WR_PIN, true);
+		PORTA.OUTSET.reg = _BV(WR_PIN);
 	}
 	
 	// Stop driving data pins

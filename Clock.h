@@ -19,8 +19,9 @@
 #define noInterrupts() cli()
 
 unsigned long micros();
+unsigned long millis();
 void delay(uint16_t duration);
-void delay_us(uint16_t duration);
+void delayMicroseconds(uint16_t duration);
 
 void ClockInit();
 

@@ -120,6 +120,7 @@
             <Value>DEBUG</Value>
           </ListValues>
         </avrgcc.compiler.symbols.DefSymbols>
+        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
         <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
         <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
         <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
@@ -146,11 +147,23 @@
             <Value>libm</Value>
           </ListValues>
         </avrgcccpp.linker.libraries.Libraries>
+        <avrgcccpp.linker.memorysettings.Eeprom>
+          <ListValues>
+            <Value>.eeprom=0x0</Value>
+          </ListValues>
+        </avrgcccpp.linker.memorysettings.Eeprom>
+        <avrgcccpp.linker.miscellaneous.LinkerFlags>-Wl,--cref</avrgcccpp.linker.miscellaneous.LinkerFlags>
         <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
       </AvrGccCpp>
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ADC.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ADC.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Clock.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -169,6 +182,60 @@
     <Compile Include="I2CMaster.h">
       <SubType>compile</SubType>
     </Compile>
+    <None Include="IMU\Compass.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\DCM.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\IMU.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\IMU.h">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\IMUInternal.h">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\Math.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\Math.h">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\Output.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\Razor_AHRS.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IMU\Sensors.cpp">
+      <SubType>compile</SubType>
+    </None>
+    <Compile Include="IRremote\IRDecode.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IRremote\IREncoding.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <None Include="IRremote\IREncoding.h">
+      <SubType>compile</SubType>
+    </None>
+    <Compile Include="IRremote\IRremote.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <None Include="IRremote\IRremote.h">
+      <SubType>compile</SubType>
+    </None>
+    <None Include="IRremote\IRremoteInt.h">
+      <SubType>compile</SubType>
+    </None>
+    <Compile Include="IRremote\IRTransmit.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <None Include="IRremote\IRTransmit.h">
+      <SubType>compile</SubType>
+    </None>
     <Compile Include="Modules\DPadModule.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -179,6 +246,15 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
       </CustomCompilationSetting>
+    </Compile>
+    <Compile Include="Modules\IMUModule.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Modules\IRModule.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Modules\Joystick.cpp">
+      <SubType>compile</SubType>
     </Compile>
     <Compile Include="Modules\KnobModule.cpp">
       <SubType>compile</SubType>
@@ -222,6 +298,9 @@
     <Compile Include="Modulo.h">
       <SubType>compile</SubType>
     </Compile>
+    <None Include="IRremote\LICENSE.txt">
+      <SubType>compile</SubType>
+    </None>
     <None Include="NeoPixel.cpp">
       <SubType>compile</SubType>
     </None>
@@ -258,6 +337,8 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Modules" />
+    <Folder Include="IRremote" />
+    <Folder Include="IMU" />
     <Folder Include="OLED" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

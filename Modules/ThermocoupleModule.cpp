@@ -122,6 +122,13 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 void ModuloReset() {
 }
 
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	return false;
+}
+
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+}
+
 int main(void)
 {
 	ClockInit();

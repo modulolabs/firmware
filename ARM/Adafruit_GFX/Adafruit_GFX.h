@@ -8,11 +8,21 @@
 #define WIDTH 96
 #define HEIGHT 64
 
+struct Color {
+    Color() : r(0), g(0), b(0), a(0) {}
+    Color(uint8_t r_, uint8_t g_, uint8_t b_, uint8_t a_ = 255) :
+        r(r_), g(g_), b(b_), a(a_) {}
+
+	uint16_t Color565();
+
+    uint8_t r, g, b, a;
+};
+    
 class Adafruit_GFX {
 
  public:
 
-	uint16_t Color565(uint8_t r, uint8_t g, uint8_t b);
+	
 
   Adafruit_GFX(); // Constructor
 
@@ -53,13 +63,16 @@ class Adafruit_GFX {
     drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, 
       int16_t w, int16_t h, uint16_t color),
     drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
-      uint16_t bg, uint8_t size),
+      uint16_t bg),
     setCursor(int16_t x, int16_t y),
     setTextColor(uint16_t c),
     setTextColor(uint16_t c, uint16_t bg),
     setTextSize(uint8_t s),
     setTextWrap(bool w),
     setRotation(uint8_t r);
+
+	int charWidth(int textSize);
+	int charHeight(int textSize);
 
 #if ARDUINO >= 100
   virtual size_t write(uint8_t);
@@ -72,6 +85,7 @@ class Adafruit_GFX {
 
   uint8_t getRotation(void) const;
 
+	uint8_t getTextSize() { return textsize; }
  protected:
 
   int16_t
