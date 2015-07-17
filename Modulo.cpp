@@ -9,15 +9,14 @@
 #include "Modulo.h"
 #include "Config.h"
 #include "Random.h"
+#include "TwoWire.h"
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/boot.h>
 #include <avr/eeprom.h>
-#include <util/crc16.h>
 
-static const uint8_t _broadcastAddress = 9;
-static volatile uint8_t _deviceAddress = 0;
+
 static ModuloStatus _status;
 static volatile uint8_t *_statusDDR = NULL;
 static volatile uint8_t *_statusPort = NULL;
@@ -26,6 +25,7 @@ static uint8_t _statusCounter = 0;
 static uint16_t _statusBreathe = 0;
 static uint16_t _deviceID_EEPROM EEMEM = 0xFFFF;
 volatile uint16_t _deviceID = 0xFFFF;
+const uint8_t moduloBroadcastAddress = 9;
 
 #define BroadcastCommandGlobalReset 0
 #define BroadcastCommandGetNextDeviceID 1
@@ -61,11 +61,6 @@ uint16_t ModuloGetDeviceID() {
 	return _deviceID;
 }
 
-static void _SetDeviceAddress(uint8_t address) {
-    _deviceAddress = address;
-	TWSA = (address << 1);
-	ModuloSetStatus(ModuloStatusOff);
-}
 
 
 void ModuloInit(
@@ -81,24 +76,12 @@ void ModuloInit(
 		*_statusDDR |= _statusMask;
 	}
 	
+	TwoWireInit();
+	TwoWireSetDeviceAddress(0);
+
 	// Ensure that we have a valid device id
 	ModuloGetDeviceID();
-	
-#if defined(CPU_TINYX41)
-	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
-	TWSCRA = (1 << TWDIE) | (1 << TWASIE) | (1 << TWEN) | (1 << TWSIE);
-	
-	// Also listen for message on the broadcast address
-	TWSAM = (_broadcastAddress << 1)| 1;
-#elif defined(CPU_TINYX8)
-    TWCR = _BV(TWEN) | _BV(TWEA) | _BV(TWIE);
-    TWAR = (MODULE_ADDRESS << 1) | _BV(TWGCE);
-    TWAMR = 0xFF;
-#endif
-
     ModuloReset();
-	_SetDeviceAddress(0);
-	
 	ModuloSetStatus(ModuloStatusBlinking);
 }
 
@@ -147,43 +130,20 @@ void ModuloUpdateStatusLED() {
 
 }
 
-
-static void _Acknowledge(bool ack, bool complete=false) {
-#if defined(CPU_TINYX41)
-	if (ack) {
-		TWSCRB &= ~_BV(TWAA);
-	} else {
-		TWSCRB |= _BV(TWAA);
-	}
-	
-	TWSCRB |= _BV(TWCMD1) | (complete ? 0 : _BV(TWCMD0));
-#elif defined(CPU_TINYX8)
-    if (ack) {
-        TWCR |= _BV(TWEA);
-    } else {
-        TWCR &= ~_BV(TWEA);
-    }
-#endif
-}
-
-ModuloWriteBuffer _writeBuffer;
-ModuloReadBuffer _readBuffer;
-
 static bool _shouldReplyToBroadcastRead = false;
 
 static uint8_t _eventCode = 0;
 static uint16_t _eventData = 0;
 
-
-static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
+bool TwoWireWriteCallback(const ModuloWriteBuffer &buffer) {
     _shouldReplyToBroadcastRead = false;
 
-    if (buffer.GetAddress() == _broadcastAddress) {
+    if (buffer.GetAddress() == moduloBroadcastAddress) {
 
         switch(buffer.GetCommand()) {
             case BroadcastCommandGlobalReset:
                 if (buffer.GetSize() == 0) {
-                    _SetDeviceAddress(0);
+                    TwoWireSetDeviceAddress(0);
                     ModuloReset();
                 }
                 break;
@@ -200,7 +160,7 @@ static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
             case BroadcastCommandSetAddress:
                 if (buffer.GetSize() == 3 and
                     buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
-                    _SetDeviceAddress(buffer.Get<uint8_t>(2));
+                    TwoWireSetDeviceAddress(buffer.Get<uint8_t>(2));
                     return true;
                 }
                 break;
@@ -243,8 +203,8 @@ static bool _ModuloWrite(const ModuloWriteBuffer &buffer) {
     return ModuloWrite(buffer);
 }
 
-static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer) {
-    if (writeBuffer.GetAddress() == _broadcastAddress) {
+bool TwoWireReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer) {
+    if (writeBuffer.GetAddress() == moduloBroadcastAddress) {
         if (!_shouldReplyToBroadcastRead) {
             return false;
         }
@@ -260,7 +220,7 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
                 }
             case BroadcastCommandGetAddress:
                 {
-                    uint8_t addr = _deviceAddress;
+                    uint8_t addr = TwoWireGetDeviceAddress();
                     readBuffer->AppendValue<uint8_t>(addr);
                     return true;
                 }
@@ -296,74 +256,6 @@ static bool _ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, M
 }
 
 
-// The interrupt service routine. Examine registers and dispatch to the handlers above.
-#if defined(CPU_TINYX41)
-ISR(TWI_SLAVE_vect)
-{
-	bool dataInterruptFlag = (TWSSRA & (1 << TWDIF)); // Check whether the data interrupt flag is set
-	bool isAddressOrStop = (TWSSRA & (1 << TWASIF)); // Get the TWI Address/Stop Interrupt Flag
-	bool isReadOperation = (TWSSRA & (1 << TWDIR));
-	bool addressReceived = (TWSSRA & (1 << TWAS)); // Check if we received an address and not a stop
-	
-    
-    //volatile bool clockHold = (TWSSRA & _BV(TWCH));
-    //volatile bool receiveAck = (TWSSRA & _BV(TWRA));
-    //volatile bool collision = (TWSSRA & _BV(TWC));
-    //volatile bool busError = (TWSSRA & _BV(TWBE));
-
-	if (isAddressOrStop) {
-
-		if (addressReceived) {
-            // The address is in the high 7 bits, the RD/WR bit is in the lsb
-			uint8_t address = TWSD;
-
-			if (isReadOperation) {
-                _readBuffer.Reset(address);
-                //_readBuffer.AppendValue(42);
-				bool retval = _ModuloRead(_writeBuffer.GetCommand(), _writeBuffer, &_readBuffer);
-                _readBuffer.AppendValue(_readBuffer.ComputeCRC(address));
-                _Acknowledge(retval /*ack*/, false /*complete*/);
-			} else {
-                _Acknowledge(true /*ack*/, false /*complete*/);
-				_writeBuffer.Reset(address);
-			}
-		} else {
-			//if (!isReadOperation) {
-				
-			//}
-			//TWSCRB |= 2;
-            // XXX: Do we need to acknowledge stops?
-            // XXX: Should we disable the stop interrupt?
-			_Acknowledge(true /*ack*/, true /*complete*/);
-		}
-	}
-
-	if (dataInterruptFlag) {
-		if (isReadOperation) {
-            uint8_t data = 0;
-            bool ack = _readBuffer.GetNextByte(&data);
-        	TWSD = data;
-    		_Acknowledge(ack /*ack*/, !ack /*complete*/);
-		} else {
-        
-			volatile uint8_t data = TWSD;
-			_Acknowledge(true, false);
-
-			// The first byte has the command in the upper 3 bytes
-			// and the length in the lower 5 bytes.
-			bool ack = _writeBuffer.Append(data);
-
-            volatile bool isValid = _writeBuffer.IsValid();
-            if (isValid) {
-                _ModuloWrite(_writeBuffer);
-            }
-
-            //_Acknowledge(ack /*ack*/, !ack /*complete*/);
-        }
-	}
-
-}
-#endif
 
 #if defined(CPU_TINYX8)
 
@@ -423,7 +315,7 @@ ISR(TWI_vect)
         case TW_SLAVE_ARB_LOST_GNERAL: // general call+w received. ack transmitted. (after arb lost)
             {
                 volatile uint8_t address = TWDR;
-                _writeBuffer.Reset(address);
+                moduloWriteBuffer.Reset(address);
                 _Acknowledge((data >> 1) == 6);
             }
             break;
@@ -432,11 +324,11 @@ ISR(TWI_vect)
             {
         	    volatile uint8_t data = TWDR;
         			
-        	    bool ack = _writeBuffer.Append(data);
+        	    bool ack = moduloWriteBuffer.Append(data);
 
-        	    volatile bool isValid = _writeBuffer.IsValid();
+        	    volatile bool isValid = moduloWriteBuffer.IsValid();
         	    if (isValid) {
-            	    ModuloWrite(_writeBuffer);
+            	    ModuloWrite(moduloWriteBuffer);
         	    }
         	    _Acknowledge(true);
             }
@@ -459,9 +351,9 @@ ISR(TWI_vect)
         case TW_SLAVE_ARB_LOST_R_ACK: // own address+r received. ack transmitted. (after arb lost)
             {
                 uint8_t address = TWDR;
-                _readBuffer.Reset(address);
-		        ModuloRead(_writeBuffer.GetCommand(), _writeBuffer, &_readBuffer);
-                _readBuffer.AppendValue(_readBuffer.ComputeCRC(address));
+                moduloReadBuffer.Reset(address);
+		        ModuloRead(moduloWriteBuffer.GetCommand(), moduloWriteBuffer, &moduloReadBuffer);
+                moduloReadBuffer.AppendValue(moduloReadBuffer.ComputeCRC(address));
                 
                 if ((data >> 1) != 6) {
                     _Acknowledge(false);
@@ -473,7 +365,7 @@ ISR(TWI_vect)
         case TW_SLAVE_DATA_TX_ACK: // Data transmitted, ack received.
             {
                 uint8_t data = 0;
-                bool ack = _readBuffer.GetNextByte(&data);
+                bool ack = moduloReadBuffer.GetNextByte(&data);
                 TWDR = data;
                 _Acknowledge(ack);
             }
@@ -494,52 +386,3 @@ ISR(TWI_vect)
     }
 }
 #endif
-
-ModuloWriteBuffer::ModuloWriteBuffer() {
-}
-	
-void ModuloWriteBuffer::Reset(volatile uint8_t address) {
-    _command = 0xFF;
-    _length = 0;
-    _expectedLength = 0xFF;
-    _receivedCRC = -1;
-    _address = address >> 1;
-    _computedCRC = _crc8_ccitt_update(0, address);
-}
-	
-// Append a value to the buffer
-// Return false if there is not enough space or the CRC fails.
-bool ModuloWriteBuffer::Append(volatile const uint8_t value) {
-	if (_command == 0xFF) {
-		// The first byte contains the command in the upper 3 bits
-		// and the expected length in the lower 5 bits.
-		_command = value;
-		_computedCRC = _crc8_ccitt_update(_computedCRC, value);
-		return true;
-	}
-    if (_expectedLength == 0xFF) {
-        _expectedLength = value;
-        _computedCRC =  _crc8_ccitt_update(_computedCRC, value);
-        return true;
-    }
-	if (_length+1 >= MODULO_MAX_BUFFER_SIZE) {
-		return false;
-	}
-    if (_length < _expectedLength) {
-   	    _data[_length] = value;
-	    _length++;
-        _computedCRC = _crc8_ccitt_update(_computedCRC, value);
-        return true;
-    }
-	if (_receivedCRC == -1) {
-        _receivedCRC = value;
-        return true;
-        // return value == _computedCRC;
-    }
-
-	return false;
-}
-
-bool ModuloWriteBuffer::IsValid() {
-    return (_length == _expectedLength and _computedCRC == _receivedCRC);
-}

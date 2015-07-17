@@ -17,7 +17,6 @@
 #define CPU_TINYX8
 #endif
 
-
 #define MODULE_TYPE_DPAD 1
 #define MODULE_TYPE_KNOB 2
 #define MODULE_TYPE_GPIO 3
@@ -30,7 +29,7 @@
 #define MODULE_TYPE_IR 10
 #define MODULE_TYPE_IMU 11
 
-#define MODULE_TYPE MODULE_TYPE_IR
+#define MODULE_TYPE MODULE_TYPE_JOYSTICK
 
 #ifndef MODULE_TYPE
 #error No module type defined

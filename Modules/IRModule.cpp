@@ -17,6 +17,7 @@
 #include "IRremote/IRremote.h"
 #include "IRremote/IREncoding.h"
 
+
 const char *ModuloDeviceType = "co.modulo.ir";
 const uint16_t ModuloDeviceVersion = 0;
 const char *ModuloCompanyName = "Integer Labs";

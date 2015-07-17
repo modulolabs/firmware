@@ -159,6 +159,7 @@ int TwoWire::write(uint8_t c) {
 
 uint8_t TwoWire::endTransmission() {
     I2CStop();
+	return 0;
 }
 
 

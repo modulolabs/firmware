@@ -164,6 +164,12 @@
     <Compile Include="ADC.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Buffer.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Buffer.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Clock.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -180,6 +186,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="I2CMaster.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="TwoWire.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="TwoWire841.cpp">
       <SubType>compile</SubType>
     </Compile>
     <None Include="IMU\Compass.cpp">
