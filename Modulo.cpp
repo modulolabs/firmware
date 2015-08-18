@@ -10,13 +10,14 @@
 #include "Config.h"
 #include "Random.h"
 #include "TwoWire.h"
+#include "Clock.h"
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/boot.h>
 #include <avr/eeprom.h>
 
-
+static volatile uint32_t nextAnnounceTime = 0;
 static ModuloStatus _status;
 static volatile uint8_t *_statusDDR = NULL;
 static volatile uint8_t *_statusPort = NULL;
@@ -26,6 +27,9 @@ static uint16_t _statusBreathe = 0;
 static uint16_t _deviceID_EEPROM EEMEM = 0xFFFF;
 volatile uint16_t _deviceID = 0xFFFF;
 const uint8_t moduloBroadcastAddress = 9;
+
+static const uint8_t moduloMasterAddress = 2;
+
 
 #define BroadcastCommandGlobalReset 0
 #define BroadcastCommandGetNextDeviceID 1
@@ -41,6 +45,7 @@ const uint8_t moduloBroadcastAddress = 9;
 #define BroadcastCommandSetStatusLED 11
 #define BroadcastCommandClearEvent 12
 
+const uint8_t MODULO_CODE_ANNOUNCE = 251;
 
 uint16_t ModuloGetDeviceID() {
 	// If _deviceID has been initialized, return it
@@ -77,12 +82,13 @@ void ModuloInit(
 	}
 	
 	TwoWireInit();
-	TwoWireSetDeviceAddress(0);
+	TwoWireSetAddress(0);
 
 	// Ensure that we have a valid device id
 	ModuloGetDeviceID();
     ModuloReset();
 	ModuloSetStatus(ModuloStatusBlinking);
+	nextAnnounceTime = 0;
 }
 
 
@@ -143,7 +149,7 @@ bool TwoWireWriteCallback(const ModuloWriteBuffer &buffer) {
         switch(buffer.GetCommand()) {
             case BroadcastCommandGlobalReset:
                 if (buffer.GetSize() == 0) {
-                    TwoWireSetDeviceAddress(0);
+                    TwoWireSetAddress(0);
                     ModuloReset();
                 }
                 break;
@@ -160,7 +166,7 @@ bool TwoWireWriteCallback(const ModuloWriteBuffer &buffer) {
             case BroadcastCommandSetAddress:
                 if (buffer.GetSize() == 3 and
                     buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
-                    TwoWireSetDeviceAddress(buffer.Get<uint8_t>(2));
+                    TwoWireSetAddress(buffer.Get<uint8_t>(2));
                     return true;
                 }
                 break;
@@ -220,7 +226,7 @@ bool TwoWireReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer, 
                 }
             case BroadcastCommandGetAddress:
                 {
-                    uint8_t addr = TwoWireGetDeviceAddress();
+                    uint8_t addr = TwoWireGetAddress();
                     readBuffer->AppendValue<uint8_t>(addr);
                     return true;
                 }
@@ -256,133 +262,39 @@ bool TwoWireReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer, 
 }
 
 
+void sendPacket(uint8_t packetCode, uint8_t *data, uint8_t len) {
+	TwoWireTransmitBegin(moduloMasterAddress);
+	TwoWireTransmitUInt8(TwoWireGetAddress());
+	TwoWireTransmitUInt8(packetCode);
+	
+	for (int i=0; i < len; i++) {
+		TwoWireTransmitUInt8(data[i]);
+	}
 
-#if defined(CPU_TINYX8)
-
-#define TW_BUS_ERROR 0x00              // A bus error has occurred due to an illegal start or stop
-#define TW_BUS_UNDEFINED 0xF8          // No relevant state information available
-
-// Master
-#define TW_MASTER_START 0x08           // start transmitted
-#define TW_MASTER_REPEATED_START 0x10  // repeated start transmitted
-#define TW_MASTER_ARB_LOST 0x38        // arbitration lost
-
-// Master Transmitter
-#define TW_MASTER_ADDR_W_ACK  0x18     // address+w transmitted, ack received
-#define TW_MASTER_ADDR_W_NACK 0x20     // address+w transmitted, nack received
-#define TW_MASTER_DATA_TX_ACK 0x28     // data transmitted, ack received
-#define TW_MASTER_DATA_TX_NACK 0x30    // data transmitted, nack received
-
-// Master Receiver
-#define TW_MASTER_ADDR_R_ACK 0x40      // address+r transmitted, ack received
-#define TW_MASTER_ADDR_R_NACK 0x48     // address+r transmitted, nack received
-#define TW_MASTER_DATA_RX_ACK 0x50     // data received, ack transmitted
-#define TW_MASTER_DATA_RX_NACK 0x58    // data received, nack transmitted
-
-// Slave Receiver
-#define TW_SLAVE_OWN_ADDR_W_ACK 0x60   // own address received, ack transmitted
-#define TW_SLAVE_ARB_LOST_W_ACK 0x68   // arbitration lost, own address+w received
-#define TW_SLAVE_GENERAL_W_ACK 0x70    // general call received, ack transmitted
-#define TW_SLAVE_ARB_LOST_GNERAL 0x78  // arbitration lost, general call received
-#define TW_SLAVE_OWN_ADDR_RX_ACK 0x80  // data received at own address, ack transmitted
-#define TW_SLAVE_OWN_ADDR_RX_NACK 0x88 // data received at own address, nack transmitted
-#define TW_SLAVE_GENERAL_RX_ACK 0x90   // data received at general call, ack transmitted 
-#define TW_SLAVE_GENERAL_RX_NACK 0x98  // data received at general call, nack transmitted
-#define TW_SLAVE_STOP 0xA0             // stop or repeated start received
-
-// Slave Transmitter
-#define TW_SLAVE_OWN_ADDR_R_ACK 0xA8   // own address+r received, ack transmitted
-#define TW_SLAVE_ARB_LOST_R_ACK 0xB0   // own address+r received after arb lost, ack transmitted
-#define TW_SLAVE_DATA_TX_ACK 0xB8      // data byte transmitted, ack received
-#define TW_SLAVE_DATA_TX_NACK 0xC0     // data byte transmitted, nack received
-#define TW_SLAVE_DATA_LAST_TX_ACK 0xC8 // last data bye transmitted, ack received
-
-
-ISR(TWI_vect)
-{
-    volatile uint8_t status = TWSR;
-    volatile uint8_t data = TWDR;
-
-    switch(status) {
-        
-        //
-        // Slave Receiver Mode
-        //
-        
-        case TW_SLAVE_OWN_ADDR_W_ACK:  // own address+w received.  ack transmitted.
-        case TW_SLAVE_ARB_LOST_W_ACK:  // own address+w received.  ack transmitted. (after arb lost)
-        case TW_SLAVE_GENERAL_W_ACK:   // general call+w received. ack transmitted.
-        case TW_SLAVE_ARB_LOST_GNERAL: // general call+w received. ack transmitted. (after arb lost)
-            {
-                volatile uint8_t address = TWDR;
-                moduloWriteBuffer.Reset(address);
-                _Acknowledge((data >> 1) == 6);
-            }
-            break;
-        case TW_SLAVE_OWN_ADDR_RX_ACK: //  own address, data received. ack transmitted.
-        case TW_SLAVE_GENERAL_RX_ACK:  // general call, data received. ack transmitted.
-            {
-        	    volatile uint8_t data = TWDR;
-        			
-        	    bool ack = moduloWriteBuffer.Append(data);
-
-        	    volatile bool isValid = moduloWriteBuffer.IsValid();
-        	    if (isValid) {
-            	    ModuloWrite(moduloWriteBuffer);
-        	    }
-        	    _Acknowledge(true);
-            }
-            break;
-        case TW_SLAVE_OWN_ADDR_RX_NACK: // own address, data received. nack transmitted.
-        case TW_SLAVE_GENERAL_RX_NACK:  // general call, data received. nack transmitted.
-            // Must ack to continue matching slave address
-            _Acknowledge(true);
-            break;
-        case TW_SLAVE_STOP: // Stop or repeated start received.
-            // Must ack to continue matching slave address
-            _Acknowledge(true);
-            break;
-
-         //
-         // Slave Transmitter Mode
-         //
-
-        case TW_SLAVE_OWN_ADDR_R_ACK: // own address+r received. ack transmitted.
-        case TW_SLAVE_ARB_LOST_R_ACK: // own address+r received. ack transmitted. (after arb lost)
-            {
-                uint8_t address = TWDR;
-                moduloReadBuffer.Reset(address);
-		        ModuloRead(moduloWriteBuffer.GetCommand(), moduloWriteBuffer, &moduloReadBuffer);
-                moduloReadBuffer.AppendValue(moduloReadBuffer.ComputeCRC(address));
-                
-                if ((data >> 1) != 6) {
-                    _Acknowledge(false);
-                    break;
-                }
-                
-            }
-            // Don't break. Fall through to load the TWDR.
-        case TW_SLAVE_DATA_TX_ACK: // Data transmitted, ack received.
-            {
-                uint8_t data = 0;
-                bool ack = moduloReadBuffer.GetNextByte(&data);
-                TWDR = data;
-                _Acknowledge(ack);
-            }
-            break;
-        case TW_SLAVE_DATA_TX_NACK: // Data transmitted, nack received.
-            // Must ack to continue matching slave address
-            _Acknowledge(true);
-            asm("nop");
-            break;
-        case TW_SLAVE_DATA_LAST_TX_ACK: // Last data byte transmitted, ack received
-            // Must ack to continue matching slave address
-            _Acknowledge(true);
-            break;
-        default:
-            asm("nop");
-            _Acknowledge(false);
-            break;  
-    }
+	TwoWireTransmitCRC();
+	
+	TwoWireTransmitEnd();
 }
-#endif
+
+void sendAnnouncePacket() {
+	TwoWireTransmitBegin(moduloMasterAddress);
+	TwoWireTransmitUInt8(TwoWireGetAddress());
+	TwoWireTransmitUInt8(MODULO_CODE_ANNOUNCE);
+	TwoWireTransmitUInt16(ModuloGetDeviceID());
+	TwoWireTransmitUInt8(ModuloDeviceVersion);
+	TwoWireTransmitString(ModuloDeviceType);
+	TwoWireTransmitCRC();
+	TwoWireTransmitEnd();
+}
+
+
+
+
+void moduloLoop() {
+	uint64_t t = millis();
+	if (TwoWireGetAddress() == 0 and t >= nextAnnounceTime) {
+		sendAnnouncePacket();
+			
+		nextAnnounceTime = t+100;
+	}
+}

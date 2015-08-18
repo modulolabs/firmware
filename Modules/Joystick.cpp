@@ -97,19 +97,27 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 	}
 }
 
+extern uint8_t _end;
+extern uint8_t __stack;
+
 int main(void)
 {
+	for (uint8_t *p = &_end; p <= &__stack; p++) {
+		*p = 0xc5;
+	}
+	
 	ClockInit();
     
-	ModuloInit(&DDRA, &PORTA, _BV(7));
-	PUEA |= (1 << BUTTON_PIN);
+
+	ModuloInit(&DDRB, &PORTB, _BV(7));
+	PORTC |= _BV(2);
 
 	while(1)
 	{
 		// Determine the new position and button state
 		volatile uint8_t newHPos = ADCRead(HORIZONTAL_PIN)/4;
 		volatile uint8_t newVPos = ADCRead(VERTICAL_PIN)/4;
-		volatile bool newButtonState = !(PINA & (1 << BUTTON_PIN));
+		volatile bool newButtonState = !(PINC & _BV(2));
 		
 		// Disable interrupts and atomically update the state
 		noInterrupts();
@@ -129,6 +137,10 @@ int main(void)
 		
 		// Rate limit the updates
 		_delay_ms(5);
+		
+		moduloLoop();
+		
+
 	}
 }
 

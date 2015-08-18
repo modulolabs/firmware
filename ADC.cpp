@@ -10,9 +10,19 @@
 
 uint16_t ADCRead(uint8_t channel, uint8_t aref)
 {
+
+#if defined(__AVR_ATtiny48__) || defined(__AVR_ATtiny88__)
+	ADMUX = channel | _BV(REFS0);
+	
+#elif defined(__AVR_ATtiny841__) || defined(__AVR_ATtiny841__)
 	// Set the channel and use the AVCC reference
 	ADMUXA = channel;
 	ADMUXB = (aref << REFS0); // Select the voltage reference
+	
+#else
+#error "No ADC Implementation for MCU"
+#endif	
+	
 	ADCSRA |= 7; // 128x prescaler
 	ADCSRA |= _BV(ADEN); // Enable the ADC
 	

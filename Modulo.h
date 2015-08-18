@@ -19,6 +19,9 @@
 
 extern const uint8_t moduloBroadcastAddress;
 
+void moduloUpdate();
+void sendPacket(uint8_t packetCode, uint8_t *data, uint8_t len);
+
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
 bool ModuloWrite(const ModuloWriteBuffer &buffer);
 void ModuloReset();
@@ -45,6 +48,8 @@ void ModuloInit(
 	
 void ModuloSetStatus(ModuloStatus status);
 void ModuloUpdateStatusLED();
+
+void moduloLoop();
 
 template <class T>
 class ModuloVariable {
