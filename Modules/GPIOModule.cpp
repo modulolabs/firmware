@@ -17,21 +17,23 @@ const char *ModuloProductName = "IO Module";
 const char *ModuloDocURL = "modulo.co/docs/io";
 
 /*
-GPIO 0 - PA3 - PCINT3 - ADC3 - TOCC2
+GPIO 0 - PB2 - PCINT10 - ADC8 - TOCC7
 GPIO 1 - PA2 - PCINT2 - ADC2 - TOCC1
 GPIO 2 - PA1 - PCINT1 - ADC1 - TOCC0
-GPIO 3 - PB2 - PCINT10 - ADC8 - TOCC7
-GPIO 4 - PA7 - PCINT7 - ADC7
+GPIO 3 - PA0 - PCINT0 - ADC0
+GPIO 4 - PA3 - PCINT3 - ADC3 - TOCC2
 GPIO 5 - PB0 - PCINT8 - ADC11
 GPIO 6 - PB1 - PCINT9 - ADC10
-GPIO 7 - PA0 - PCINT0 - ADC0
+GPIO 7 - PA7 - PCINT7 - ADC7
 */
 
+
+
 static volatile uint8_t *GPIO_PORT[] = {
-	&PORTA,
-	&PORTA,
-	&PORTA,
 	&PORTB,
+	&PORTA,
+	&PORTA,
+	&PORTA,
 	&PORTA,
 	&PORTB,
 	&PORTB,
@@ -39,10 +41,10 @@ static volatile uint8_t *GPIO_PORT[] = {
 };
 
 static volatile uint8_t *GPIO_PUE[] = {
-    &PUEA,
-    &PUEA,
-    &PUEA,
     &PUEB,
+    &PUEA,
+    &PUEA,
+    &PUEA,
     &PUEA,
     &PUEB,
     &PUEB,
@@ -51,10 +53,10 @@ static volatile uint8_t *GPIO_PUE[] = {
 
 
 static volatile uint8_t *GPIO_DDR[] = {
-	&DDRA,
-	&DDRA,
-	&DDRA,
 	&DDRB,
+	&DDRA,
+	&DDRA,
+	&DDRA,
 	&DDRA,
 	&DDRB,
 	&DDRB,
@@ -62,26 +64,26 @@ static volatile uint8_t *GPIO_DDR[] = {
 };
 
 static volatile uint8_t *GPIO_PIN[] = {
-	&PINA,
-	&PINA,
-	&PINA,
 	&PINB,
+	&PINA,
+	&PINA,
+	&PINA,
 	&PINA,
 	&PINB,
 	&PINB,
 	&PINA
 };
 
-static const uint8_t GPIO_TIMER_COMPARE[] = {2,1,0,7};
+static const int8_t GPIO_TIMER_COMPARE[] = {7, 1, 0, -1, 2, -1, -1, -1};
 
-static const uint8_t GPIO_PIN_NUMBER[] = {3, 2, 1, 2, 7, 0, 1, 0};
+static const uint8_t GPIO_PIN_NUMBER[] = {2, 2, 1, 0, 3, 0, 1, 7};
 
 static const uint8_t GPIO_MASK[] = {
-	_BV(3), _BV(2), _BV(1), _BV(2), _BV(7), _BV(0), _BV(1), _BV(0)
+	_BV(2), _BV(2), _BV(1), _BV(0), _BV(3), _BV(0), _BV(1), _BV(7)
 };
 
 static const uint8_t GPIO_ADC[] = {
-	3,2,1,8,7,11,10,0
+	8, 2, 1, 0, 3, 11, 10, 7
 };
 
 static volatile uint16_t _pwmValues[8] = {0,0,0,0,0,0,0,0};
@@ -90,11 +92,16 @@ static volatile bool _analogReadStarted = false;
 
 // The first two PWMs are on Timer1, the second two are on Timer2
 // The output compares are 2, 1, 0, and 7.
-PWM pwms[] = {PWM(1,2), PWM(1,1), PWM(2,0), PWM(2,7)};
+PWM pwm7(2/*timer*/, 7 /*channel*/);
+PWM pwm1(1/*timer*/,1 /*channel*/);
+PWM pwm0(2/*timer*/, 0 /*channel*/);
+PWM pwm2(1/*timer*/, 2 /*channel*/);
+
+PWM *pwms[8] = {&pwm7, &pwm1, &pwm0, NULL, &pwm2, NULL, NULL, NULL};
 
 void _setPWMFrequency(uint8_t pin, uint16_t frequency) {
-    if (pin < 4) {
-        pwms[pin].SetFrequency(frequency);
+    if (pwms[pin]) {
+        pwms[pin]->SetFrequency(frequency);
     }
 }
 
@@ -116,9 +123,9 @@ void _setPWMValue(uint8_t pin, uint16_t value) {
 
     _pwmValues[pin] = value;
 
-    if (pin < 4) {
-        pwms[pin].SetValue(value);
-        pwms[pin].SetCompareEnabled(true);
+    if (pwms[pin]) {
+        pwms[pin]->SetValue(value);
+        pwms[pin]->SetCompareEnabled(true);
     }
 
     _setDirection(pin, true);
@@ -151,8 +158,8 @@ static bool _setDigitalOutput(volatile uint8_t pin, volatile bool value) {
         *GPIO_PORT[pin] &= ~GPIO_MASK[pin];
     }
 
-    if (pin < 4) {
-        pwms[pin].SetCompareEnabled(false);
+    if (pwms[pin]) {
+        pwms[pin]->SetCompareEnabled(false);
     }
 
     _setDirection(pin, true);
@@ -233,7 +240,10 @@ void _updateSoftPWM() {
     uint32_t softPWMFrequency = 50;
     volatile uint32_t t = micros()*softPWMFrequency*655/10000;
     t &= 0xFFFF;
-    for (int i=5; i < 6; i++) {
+    for (int i=0; i < 8; i++) {
+		if (pwms[i]) {
+			continue;
+		}
         if (_pwmValues[i] == 0 or _pwmValues[i] == 0xFFFF) {
             continue;
         }
@@ -364,11 +374,20 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 void ModuloReset() {
     _setDirections(0);
     _setPullups(0);
-    pwms[0].SetCompareEnabled(false);
-    pwms[1].SetCompareEnabled(false);
-    pwms[2].SetCompareEnabled(false);
-    pwms[3].SetCompareEnabled(false);
+	for (int i=0; i < 8; i++) {
+		if (pwms[i]) {
+			pwms[i]->SetCompareEnabled(false);
+		}
+	}
 }
+
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+}
+
+bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	return false;
+}
+
 
 uint16_t capSense(uint8_t pin) {
     // Make the pin an input and enable the pullup resistor
@@ -404,12 +423,14 @@ int main(void)
 	ModuloInit(&DDRA, &PORTA, _BV(5));
 
 	while(1) {
-//        _updateSoftPWM();
+        _updateSoftPWM();
+/*
         if (capSense(0) > 750) {
             ModuloSetStatus(ModuloStatusOn);
         } else {
             ModuloSetStatus(ModuloStatusOff);
         }
+*/
 	}
 }
 
