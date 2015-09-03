@@ -33,10 +33,11 @@ enum FunctionCode {
 };
 
 /*
- * INA1 PA2 TOCC1
- * INA2 PA1 TOCC0
- * INB1 PB2 TOCC7
- * INB2 PA7 TOCC6
+ * INA1 PA7 TOCC6
+ * INA2 PB2 TOCC7 
+ * INB1 PA1 TOCC0
+ * INB2 PA2 TOCC1
+
  * ENABLEA PB1 
  * ENABLEB PA3 TOCC2
  * SENSEA PA0 ADC0
@@ -44,29 +45,31 @@ enum FunctionCode {
  */
 
 
-volatile uint8_t *PORTS[] = {&PORTA, &PORTA, &PORTB, &PORTA};
-volatile uint8_t *DDRS[]  = {&DDRA, &DDRA, &DDRB, &DDRA};
-uint8_t MASKS[] = {_BV(2), _BV(1), _BV(2), _BV(7)};
+volatile uint8_t *PORTS[] = {&PORTA, &PORTB, &PORTA, &PORTA};
+volatile uint8_t *DDRS[]  = {&DDRA, &DDRB, &DDRA, &DDRA};
+uint8_t MASKS[] = {_BV(7), _BV(2), _BV(1), _BV(2)};
 
-volatile uint8_t *EN_PORTS[] = {&PORTB, &PORTB, &PORTA, &PORTA};
-volatile uint8_t *EN_DDRS[]  = {&DDRB, &DDRB, &DDRA, &DDRA};
-uint8_t EN_MASKS[] = {_BV(1), _BV(1), _BV(3), _BV(3)};
+volatile uint8_t *ENABLE_PORT = &PORTB;
+volatile uint8_t *ENABLE_DDR = &DDRB;
+uint8_t ENABLE_MASK = _BV(1);
 
-PWM pwm[] = {PWM(1,1), // Timer 1, output compare 1
-             PWM(1,0), // Timer 1, output compare 0
-             PWM(2,7), // Timer 2, output compare 7
-             PWM(2,6)}; // Timer 2, output compare 6
+#define FAULT_PORT PORTB
+#define FAULT_DDR DDRB
+#define FAULT_PUE PUEB
+#define FAULT_PIN 0
+
+PWM pwm[] = {PWM(2,6),  // Timer 2, output compare 6
+			 PWM(2,7),  // Timer 2, output compare 7
+			 PWM(1,0),  // Timer 1, output compare 0
+			 PWM(1,1)}; // Timer 1, output compare 1
 
 void ModuloReset() {
+	*ENABLE_PORT &= ~ENABLE_MASK;
+	*ENABLE_DDR |= ENABLE_MASK;
+	 
     for (int i=0; i < 4; i++) {
-        *EN_PORTS[i] &= ~EN_MASKS[i];
-        *PORTS[i] &= ~MASKS[i];
-        *EN_DDRS[i] |= EN_MASKS[i];
-        *DDRS[i] |= MASKS[i];
-
         pwm[i].SetValue(0);
         pwm[i].SetCompareEnabled(true);
-      //  pwm[i].SetFrequency(1000);
     }
 }
 
@@ -77,14 +80,11 @@ void _setValue(uint8_t channel, uint16_t value) {
     pwm[channel].SetValue(value);
 }
 
-void _setEnabled(uint8_t channel, bool enable) {
-    if (channel >= 4) {
-        return;
-    }
+void _setEnabled(bool enable) {
     if (enable) {
-        *EN_PORTS[channel] |= EN_MASKS[channel];
+		*ENABLE_PORT |= ENABLE_MASK;
     } else {
-        *EN_PORTS[channel] &= ~EN_MASKS[channel];
+		*ENABLE_PORT &= ~ENABLE_MASK;
     }
 }
 
@@ -151,7 +151,7 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
             if (buffer.GetSize() != 2) {
                 return false;
             }
-            _setEnabled(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
+            _setEnabled(buffer.Get<uint8_t>(1));
             return true;
         case FunctionSetFrequency:
             if (buffer.GetSize() != 3) {
@@ -172,6 +172,7 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
     }
     return false;
 }
+
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
 	return false;
 }
@@ -183,29 +184,45 @@ int main(void)
 {
 	ModuloInit(&DDRA, &PORTA, _BV(5));
 	ClockInit();
-    ModuloReset();
-/*	
-	_setEnabled(0, true);
-	_setValue(0, 0);
-	_setValue(1, 0xFFFF/2);
-	*/
-	/*
-    _setEnabled(0,true);
-    _setEnabled(2,true);
-    _setValue(0, 0);
-    _setValue(1, 0xFFFF/2);
-    _setValue(2, 0);
-    _setValue(3, 0xFFFF);
-*/
+
+	ModuloReset();
 	
-    //DDRA |= _BV(2);
-    //PORTA |= _BV(2);
-    //pwm[0].SetCompareEnabled(false);
-   
-	while(1)
-	{
-        //volatile uint16_t current = _getCurrent(0);
-		asm("nop");
+	for (int i=0; i < 4; i++) {
+		*(DDRS[i]) |= MASKS[i];
+		pwm[i].SetFrequency(32765/2);
+	}
+	
+	FAULT_PUE |= _BV(FAULT_PIN);
+
+#if 0
+	_setEnabled(true);
+	float i = 0.0;
+	while (1) {
+		float x = cos(i);
+		float y = sin(i);
+		
+		if (x > 0) {
+			_setValue(0, 0);
+			_setValue(1, 65535*x);
+		} else {
+			_setValue(0, -65535*x);
+			_setValue(1, 0);
+		}
+		
+		if (y > 0) {
+			_setValue(2, 0);
+			_setValue(3, 65535*y);
+		} else {
+			_setValue(2, -65535*y);
+			_setValue(3, 0);
+		}		
+		i += .5;
+		
+		//delayMicroseconds(1);
+	}
+#endif
+	
+	while(1) {
 	}
 }
 
