@@ -83,7 +83,7 @@
 #include <i2c_slave.h>
 #include <i2c_slave_interrupt.h>
 
-// From module: SYSTEM - Clock Management for SAMD21
+// From module: SYSTEM - Clock Management for SAMD20
 #include <clock.h>
 #include <gclk.h>
 

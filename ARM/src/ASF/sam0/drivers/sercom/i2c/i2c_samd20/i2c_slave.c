@@ -1,7 +1,7 @@
 /**
  * \file
  *
- * \brief SAM I<SUP>2</SUP>C Slave Driver
+ * \brief SAM D20 I2C Slave Driver
  *
  * Copyright (C) 2013-2014 Atmel Corporation. All rights reserved.
  *
@@ -75,7 +75,6 @@ static enum status_code _i2c_slave_set_config(
 	Sercom *const sercom_hw = module->hw;
 
 	module->buffer_timeout = config->buffer_timeout;
-	module->ten_bit_address = config->ten_bit_address;
 
 	struct system_pinmux_config pin_conf;
 	system_pinmux_get_config_defaults(&pin_conf);
@@ -106,11 +105,8 @@ static enum status_code _i2c_slave_set_config(
 		tmp_ctrla = 0;
 	}
 
-	tmp_ctrla |= ((uint32_t)config->sda_hold_time |
-			config->transfer_speed |
-			(config->scl_low_timeout << SERCOM_I2CS_CTRLA_LOWTOUTEN_Pos) |
-			(config->scl_stretch_only_after_ack_bit << SERCOM_I2CS_CTRLA_SCLSM_Pos) |
-			(config->slave_scl_low_extend_timeout << SERCOM_I2CS_CTRLA_SEXTTOEN_Pos));
+	tmp_ctrla |= config->sda_hold_time |
+			(config->scl_low_timeout << SERCOM_I2CS_CTRLA_LOWTOUT_Pos);
 
 	i2c_hw->CTRLA.reg |= tmp_ctrla;
 
@@ -119,7 +115,6 @@ static enum status_code _i2c_slave_set_config(
 
 	i2c_hw->ADDR.reg = config->address << SERCOM_I2CS_ADDR_ADDR_Pos |
 			config->address_mask << SERCOM_I2CS_ADDR_ADDRMASK_Pos |
-			config->ten_bit_address << SERCOM_I2CS_ADDR_TENBITEN_Pos |
 			config->enable_general_call_address << SERCOM_I2CS_ADDR_GENCEN_Pos;
 
 	return STATUS_OK;
@@ -169,11 +164,7 @@ enum status_code i2c_slave_init(
 	}
 
 	uint32_t sercom_index = _sercom_get_sercom_inst_index(module->hw);
-#if (SAML21)
-	uint32_t pm_index     = sercom_index + MCLK_APBCMASK_SERCOM0_Pos;
-#else
 	uint32_t pm_index     = sercom_index + PM_APBCMASK_SERCOM0_Pos;
-#endif
 	uint32_t gclk_index   = sercom_index + SERCOM0_GCLK_ID_CORE;
 
 	/* Turn on module in PM */
@@ -205,7 +196,7 @@ enum status_code i2c_slave_init(
 #endif
 
 	/* Set SERCOM module to operate in I2C slave mode. */
-	i2c_hw->CTRLA.reg = SERCOM_I2CS_CTRLA_MODE(0x4);
+	i2c_hw->CTRLA.reg = SERCOM_I2CS_CTRLA_MODE_I2C_SLAVE;
 
 	/* Set config and return status. */
 	return _i2c_slave_set_config(module, config);
@@ -302,7 +293,7 @@ static enum status_code _i2c_slave_wait_for_bus(
  * \retval STATUS_ERR_IO            There was an error in the previous transfer
  * \retval STATUS_ERR_BAD_FORMAT    Master wants to write data
  * \retval STATUS_ERR_INVALID_ARG   Invalid argument(s) was provided
- * \retval STATUS_ERR_BUSY          The I<SUP>2</SUP>C module is busy with a job
+ * \retval STATUS_ERR_BUSY          The I<SUP>2</SUP>C module is busy with a job.
  * \retval STATUS_ERR_ERR_OVERFLOW  Master NACKed before entire packet was
  *                                  transferred
  * \retval STATUS_ERR_TIMEOUT       No response was given within the timeout
@@ -344,25 +335,6 @@ enum status_code i2c_slave_write_packet_wait(
 	if (!(i2c_hw->INTFLAG.reg & SERCOM_I2CS_INTFLAG_AMATCH)) {
 		/* Not address interrupt, something is wrong */
 		return STATUS_ERR_DENIED;
-	}
-
-	if (module->ten_bit_address) {
-		/* ACK the first address */
-		i2c_hw->CTRLB.reg &= ~SERCOM_I2CS_CTRLB_ACKACT;
-		i2c_hw->CTRLB.reg |= SERCOM_I2CS_CTRLB_CMD(0x3);
-
-		/* Wait for address interrupt */
-		status = _i2c_slave_wait_for_bus(module);
-
-		if (status != STATUS_OK) {
-			/* Timeout, return */
-			return STATUS_ERR_TIMEOUT;
-		}
-
-		if (!(i2c_hw->INTFLAG.reg & SERCOM_I2CS_INTFLAG_AMATCH)) {
-			/* Not address interrupt, something is wrong */
-			return STATUS_ERR_DENIED;
-		}
 	}
 
 	/* Check if there was an error in last transfer */
@@ -412,6 +384,7 @@ enum status_code i2c_slave_write_packet_wait(
 			i2c_hw->CTRLB.reg |= SERCOM_I2CS_CTRLB_CMD(0x02);
 
 			return STATUS_ERR_OVERFLOW;
+			/* Workaround: PIF will probably not be set, ignore */
 		}
 		/* ACK from master, continue writing */
 	}
@@ -542,8 +515,6 @@ enum status_code i2c_slave_read_packet_wait(
 /**
  * \brief Waits for a start condition on the bus
  *
- * \note This function is only available for 7-bit slave addressing.
- *
  * Waits for the master to issue a start condition on the bus.
  * Note that this function does not check for errors in the last transfer,
  * this will be discovered when reading or writing.
@@ -622,7 +593,7 @@ enum i2c_slave_direction i2c_slave_get_direction_wait(
 uint32_t i2c_slave_get_status(
 		struct i2c_slave_module *const module)
 {
-	/* Sanity check arguments */
+	 /* Sanity check arguments */
 	Assert(module);
 	Assert(module->hw);
 

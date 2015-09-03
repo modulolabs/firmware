@@ -1,7 +1,7 @@
 /**
  * \file
  *
- * \brief SAM I<SUP>2</SUP>C Slave Interrupt Driver
+ * \brief SAM D20 I2C Slave Interrupt Driver
  *
  * Copyright (C) 2013-2014 Atmel Corporation. All rights reserved.
  *
@@ -275,8 +275,8 @@ void _i2c_slave_interrupt_handler(
 	SercomI2cs *const i2c_hw = &(module->hw->I2CS);
 
 	/* Combine callback registered and enabled masks. */
-	uint8_t callback_mask = module->enabled_callback;
-	callback_mask &= module->registered_callback;
+	uint8_t callback_mask =
+			module->enabled_callback & module->registered_callback;
 
 
 	if (i2c_hw->INTFLAG.reg & SERCOM_I2CS_INTFLAG_AMATCH) {
