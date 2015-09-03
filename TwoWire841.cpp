@@ -10,6 +10,7 @@
 #include "Modulo.h"
 #include "Buffer.h"
 #include "TwoWire.h"
+#include "Config.h"
 
 static volatile uint8_t _deviceAddress = 0;
 
@@ -41,6 +42,7 @@ uint8_t TwoWireGetDeviceAddress()
 
 static void _Acknowledge(bool ack, bool complete=false) {
 #if defined(CPU_TINYX41)
+
 	if (ack) {
 		TWSCRB &= ~_BV(TWAA);
 		} else {
@@ -49,11 +51,14 @@ static void _Acknowledge(bool ack, bool complete=false) {
 	
 	TWSCRB |= _BV(TWCMD1) | (complete ? 0 : _BV(TWCMD0));
 #elif defined(CPU_TINYX8)
+
 	if (ack) {
 		TWCR |= _BV(TWEA);
 		} else {
 		TWCR &= ~_BV(TWEA);
 	}
+#else
+#error "No CPU defined"
 #endif
 }
 
