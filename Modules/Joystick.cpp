@@ -5,14 +5,6 @@
  *  Author: ekt
  */ 
 
-/*
- * ButtonsModule.cpp
- *
- * Created: 5/10/2014 9:06:29 PM
- *  Author: ekt
- */ 
-
-
 
 #include "Config.h"
 
@@ -37,8 +29,8 @@ const char *ModuloCompanyName = "Integer Labs";
 const char *ModuloProductName = "Joystick";
 const char *ModuloDocURL = "modulo.co/docs/joystick";
 
-#define HORIZONTAL_PIN 0
-#define VERTICAL_PIN 1
+#define HORIZONTAL_ADC 10
+#define VERTICAL_ADC 11
 #define BUTTON_PIN 2
 
 #define FUNCTION_GET_BUTTON 0
@@ -101,15 +93,15 @@ int main(void)
 {
 	ClockInit();
     
-	ModuloInit(&DDRA, &PORTA, _BV(7));
-	PUEA |= (1 << BUTTON_PIN);
+	ModuloInit(&DDRA, &PORTA, _BV(5));
+	PUEB |= (1 << BUTTON_PIN);
 
 	while(1)
 	{
 		// Determine the new position and button state
-		volatile uint8_t newHPos = ADCRead(HORIZONTAL_PIN)/4;
-		volatile uint8_t newVPos = ADCRead(VERTICAL_PIN)/4;
-		volatile bool newButtonState = !(PINA & (1 << BUTTON_PIN));
+		volatile uint8_t newHPos = ADCRead(HORIZONTAL_ADC)/4;
+		volatile uint8_t newVPos = ADCRead(VERTICAL_ADC)/4;
+		volatile bool newButtonState = !(PINB & (1 << BUTTON_PIN));
 		
 		// Disable interrupts and atomically update the state
 		noInterrupts();
