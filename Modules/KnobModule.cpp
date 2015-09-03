@@ -27,18 +27,29 @@
   B   - PA3 - TOCC2
 */
 
-#define INPUT_PINS PINB
-#define INPUT_PUE PUEB
+#define ENC_PINS PINB
+#define ENC_PUE PUEB
 #define ENCA_PIN 0
 #define ENCB_PIN 1
+
+#define SW_PINS PINA
 #define SW_PIN 2
 
-#define LED_PORT PORTA
-#define LED_DDR DDRA
 #define RED_PIN 1
-#define GREEN_PIN 2
-#define BLUE_PIN 3
-#define STATUS_PIN 7
+#define RED_DDR DDRA
+#define RED_PORT PORTA
+
+#define GREEN_PIN 7
+#define GREEN_DDR DDRA
+#define GREEN_PORT PORTA
+
+#define BLUE_PIN 2
+#define BLUE_DDR DDRB
+#define BLUE_PORT PORTB
+
+#define STATUS_PORT PORTA
+#define STATUS_DDR DDRA
+#define STATUS_PIN 5
 
 
 /*
@@ -89,8 +100,8 @@ void HSVToRGB(float h, float s, float v,
 */
 
 PWM pwmRed(1,0);
-PWM pwmGreen(1,1);
-PWM pwmBlue(2,2);
+PWM pwmGreen(2,6);
+PWM pwmBlue(2,7);
 
 // Input range is 0-255
 void SetRGB(uint16_t r, uint16_t g, uint16_t b) {
@@ -228,27 +239,9 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 }
 
 void ModuloReset() {
-	
     _decoder.AddPositionOffset(-_decoder.GetPosition());
 
-
-    // Enable pullups on the A/B pins
-    PUEB |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
-    LED_PORT |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
-    LED_DDR |= _BV(RED_PIN) | _BV(GREEN_PIN) | _BV(BLUE_PIN);
-    
-
-
-    SetRGB(0,0,0);
-
-
-    //_delay_ms(100);
-
-
-    pwmRed.SetCompareEnabled(true);
-    pwmGreen.SetCompareEnabled(true);
-    pwmBlue.SetCompareEnabled(true);
-	
+    SetRGB(0,0,0);	
 }
 
 
@@ -261,17 +254,46 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 
 int main(void)
 {
-	//TwoWireInit(MODULE_ADDRESS, _OnDataReceived, _OnDataRequested);
-	//Init();
+
+
+	//while (1) {
+		//RED_PORT &= ~_BV(RED_PIN);
+	//}
+	
     ClockInit();
-    ModuloInit(&DDRA, &PORTA, _BV(7));
+    ModuloInit(&STATUS_DDR, &STATUS_PORT, _BV(STATUS_PIN));
+
+    pwmRed.SetCompareEnabled(true);
+    pwmGreen.SetCompareEnabled(true);
+    pwmBlue.SetCompareEnabled(true);
+
+	pwmRed.SetFrequency(31250);
+	pwmGreen.SetFrequency(31250);
+	pwmBlue.SetFrequency(31250);
+	
+	SetRGB(255,255,255);	
+
+
+
+	ENC_PUE |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
+	
+	//RED_PORT |= _BV(RED_PIN);
+	RED_DDR |= _BV(RED_PIN);
+	
+	//GREEN_PORT |= _BV(GREEN_PIN);
+	GREEN_DDR |= _BV(GREEN_PIN);
+	
+	//BLUE_PORT |= _BV(BLUE_PIN);
+	BLUE_DDR |= _BV(BLUE_PIN);
+	
 
     Debouncer debouncer;
-
+	
+	
 	while(1)
 	{
-        _decoder.Update(INPUT_PINS & _BV(ENCA_PIN), INPUT_PINS & _BV(ENCB_PIN));
-        debouncer.Update(INPUT_PINS & _BV(SW_PIN));
+        _decoder.Update(ENC_PINS & _BV(ENCA_PIN), ENC_PINS & _BV(ENCB_PIN));
+        debouncer.Update(SW_PINS & _BV(SW_PIN));
 
         noInterrupts();
         if (!_buttonState and debouncer.Get()) {
