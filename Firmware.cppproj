@@ -188,6 +188,9 @@
     <Compile Include="I2CMaster.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Modules\TempProbe.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="TwoWire.h">
       <SubType>compile</SubType>
     </Compile>
@@ -233,9 +236,9 @@
     <None Include="IRremote\IREncoding.h">
       <SubType>compile</SubType>
     </None>
-    <Compile Include="IRremote\IRremote.cpp">
+    <None Include="IRremote\IRremote.cpp">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <None Include="IRremote\IRremote.h">
       <SubType>compile</SubType>
     </None>
