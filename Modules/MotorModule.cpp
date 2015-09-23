@@ -27,7 +27,6 @@ const char *ModuloDocURL = "modulo.co/docs/motor";
 
 enum FunctionCode {
 	FunctionSetValue,
-    FunctionGetCurrent,
     FunctionSetEnabled,
     FunctionSetFrequency
 };
@@ -62,16 +61,6 @@ PWM pwm[] = {PWM(2,6),  // Timer 2, output compare 6
 			 PWM(2,7),  // Timer 2, output compare 7
 			 PWM(1,0),  // Timer 1, output compare 0
 			 PWM(1,1)}; // Timer 1, output compare 1
-
-void ModuloReset() {
-	*ENABLE_PORT &= ~ENABLE_MASK;
-	*ENABLE_DDR |= ENABLE_MASK;
-	 
-    for (int i=0; i < 4; i++) {
-        pwm[i].SetValue(0);
-        pwm[i].SetCompareEnabled(true);
-    }
-}
 
 void _setValue(uint8_t channel, uint16_t value) {
     if (channel >= 4) {
@@ -145,13 +134,11 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
             }
             _setValue(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(1));
             return true;
-        case FunctionGetCurrent:
-            return buffer.GetSize() == 0;
         case FunctionSetEnabled:
-            if (buffer.GetSize() != 2) {
+            if (buffer.GetSize() != 1) {
                 return false;
             }
-            _setEnabled(buffer.Get<uint8_t>(1));
+            _setEnabled(buffer.Get<uint8_t>(0));
             return true;
         case FunctionSetFrequency:
             if (buffer.GetSize() != 3) {
@@ -165,10 +152,6 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
     switch (writeBuffer.GetCommand()) {
-        case FunctionGetCurrent:
-            buffer->AppendValue<uint16_t>(_getCurrent(0));
-            buffer->AppendValue<uint16_t>(_getCurrent(2));
-            return true;
     }
     return false;
 }
@@ -180,22 +163,98 @@ bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 }
 
+
+void ModuloReset() {
+	_setEnabled(false);
+	 
+    for (int i=0; i < 4; i++) {
+        pwm[i].SetValue(0);
+        pwm[i].SetCompareEnabled(true);
+    }
+}
+
+
+#define UD_PORT PORTA
+#define UD_PIN 0
+#define UD_DDR DDRA
+#define CS_PORT PORTA
+#define CS_PIN 3
+#define CS_DDR DDRA
+
+void currentIncr(int count) {
+	UD_PORT |= _BV(UD_PIN);
+	_delay_us(1);
+		
+	CS_PORT &= ~_BV(CS_PIN);
+	_delay_us(1);
+		
+	for (int i=0; i < count; i++) {
+		UD_PORT &= ~_BV(UD_PIN);
+		_delay_us(1);
+			
+		UD_PORT |= _BV(UD_PIN);
+		_delay_us(1);
+			
+	}
+	
+	CS_PORT |= _BV(CS_PIN);
+	_delay_us(1);	
+}
+
+void currentDecr(int count) {
+	UD_PORT &= ~_BV(UD_PIN);
+	_delay_us(1);
+	CS_PORT &= ~_BV(CS_PIN);
+	_delay_us(1);
+		
+	for (int i=0; i < count; i++) {
+		UD_PORT |= _BV(UD_PIN);
+		_delay_us(1);
+		UD_PORT &= ~_BV(UD_PIN);
+		_delay_us(1);	
+	}
+	
+	CS_PORT |= _BV(CS_PIN);
+	_delay_us(1);	
+}
+
 int main(void)
 {
+
+	*ENABLE_DDR |= ENABLE_MASK;
+	
+	DDRA |= _BV(5);
+	PORTA |= _BV(5);
+	
+	
 	ModuloInit(&DDRA, &PORTA, _BV(5));
 	ClockInit();
-
-	ModuloReset();
+	
+	CS_DDR |= _BV(CS_PIN);
+	UD_DDR |= _BV(UD_PIN);
 	
 	for (int i=0; i < 4; i++) {
 		*(DDRS[i]) |= MASKS[i];
 		pwm[i].SetFrequency(32765/2);
+		//pwm[i].SetFrequency(3000);
 	}
 	
 	FAULT_PUE |= _BV(FAULT_PIN);
 
-#if 0
+/*
 	_setEnabled(true);
+	_setValue(0, 65535);
+	_setValue(1, 0);
+	_setValue(2, 65535);
+	_setValue(3, 0);
+	//currentIncr(64);
+	*/
+	
+	currentDecr(64);
+	currentIncr(64);
+	
+#if 0
+
 	float i = 0.0;
 	while (1) {
 		float x = cos(i);
@@ -216,9 +275,11 @@ int main(void)
 			_setValue(2, -65535*y);
 			_setValue(3, 0);
 		}		
-		i += .5;
+		i += 1;
 		
 		//delayMicroseconds(1);
+		currentIncr(64);
+		currentDecr(32);
 	}
 #endif
 	

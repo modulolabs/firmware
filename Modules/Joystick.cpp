@@ -29,8 +29,8 @@ const char *ModuloCompanyName = "Integer Labs";
 const char *ModuloProductName = "Joystick";
 const char *ModuloDocURL = "modulo.co/docs/joystick";
 
-#define HORIZONTAL_ADC 10
-#define VERTICAL_ADC 11
+#define HORIZONTAL_ADC 11
+#define VERTICAL_ADC 10
 #define BUTTON_PIN 2
 
 #define FUNCTION_GET_BUTTON 0

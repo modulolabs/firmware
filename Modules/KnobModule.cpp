@@ -197,9 +197,14 @@ const char *ModuloDocURL = "modulo.co/docs/knob";
 #define FUNCTION_ADD_OFFSET 2
 #define FUNCTION_SET_COLOR  3
 
+#define EVENT_BUTTON_CHANGED 0
+#define EVENT_POSITION_CHANGED 1
+
 volatile uint8_t _buttonState = false;
 volatile uint8_t _buttonPressed = false;
 volatile uint8_t _buttonReleased = false;
+volatile int16_t _position = 0;
+volatile bool _positionChanged = false;
 volatile Decoder _decoder;
 
 
@@ -227,12 +232,13 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
     bool state = _buttonState;
+	int16_t pos = _position;
     switch(writeBuffer.GetCommand()) {
     case FUNCTION_GET_BUTTON:
         buffer->AppendValue<uint8_t>(state);
         return true;
     case FUNCTION_GET_POSITION:
-        buffer->AppendValue<int16_t>(_decoder.GetPosition());
+        buffer->AppendValue<int16_t>(pos);
         return true;
     }
     return false;
@@ -246,49 +252,54 @@ void ModuloReset() {
 
 
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	asm("nop");
+	if (_buttonPressed or _buttonReleased) {
+		*eventCode = EVENT_BUTTON_CHANGED;
+		*eventData = (_buttonPressed << 8) | _buttonReleased;
+		return true;
+	} else if (_positionChanged) {
+		*eventCode = EVENT_POSITION_CHANGED;
+		*eventData = _position;
+		return true;
+	}
 	return false;
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+	if (eventCode == EVENT_BUTTON_CHANGED) {
+		_buttonPressed = false;
+		_buttonReleased = false;
+	}
+	if (eventCode == EVENT_POSITION_CHANGED) {
+		_positionChanged = false;
+	}
 }
 
 int main(void)
 {
 
-
-	//while (1) {
-		//RED_PORT &= ~_BV(RED_PIN);
-	//}
-	
     ClockInit();
     ModuloInit(&STATUS_DDR, &STATUS_PORT, _BV(STATUS_PIN));
 
-    pwmRed.SetCompareEnabled(true);
-    pwmGreen.SetCompareEnabled(true);
-    pwmBlue.SetCompareEnabled(true);
-
+	SetRGB(0,0,0);
+	
 	pwmRed.SetFrequency(31250);
 	pwmGreen.SetFrequency(31250);
 	pwmBlue.SetFrequency(31250);
 	
-	SetRGB(255,255,255);	
-
-
+    pwmRed.SetCompareEnabled(true);
+    pwmGreen.SetCompareEnabled(true);
+    pwmBlue.SetCompareEnabled(true);
+	
+//	_delay_ms(10);
 
 	ENC_PUE |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
 	
-	//RED_PORT |= _BV(RED_PIN);
 	RED_DDR |= _BV(RED_PIN);
-	
-	//GREEN_PORT |= _BV(GREEN_PIN);
 	GREEN_DDR |= _BV(GREEN_PIN);
-	
-	//BLUE_PORT |= _BV(BLUE_PIN);
 	BLUE_DDR |= _BV(BLUE_PIN);
 	
-
     Debouncer debouncer;
-	
 	
 	while(1)
 	{
@@ -296,6 +307,12 @@ int main(void)
         debouncer.Update(SW_PINS & _BV(SW_PIN));
 
         noInterrupts();
+		int16_t newPos = -_decoder.GetPosition();
+		if (_position != newPos) {
+			_positionChanged = true;
+			_position = newPos;
+		}
+		
         if (!_buttonState and debouncer.Get()) {
             _buttonPressed = true;
         }
@@ -305,21 +322,6 @@ int main(void)
         _buttonState = debouncer.Get();
         interrupts();
 
-       // _delay_ms(10);
-
-        /*
-        
-        
-
-        if (debouncer.Get() and !previousSW) {
-           hue += .5;
-        }
-        previousSW = debouncer.Get();
-
-        hue += decoder.GetPosition()/24.0;
-        decoder.SetPosition(0);
-        SetHSV(hue, 1, 1);
-        */
 	}
 }
 

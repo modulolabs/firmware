@@ -18,10 +18,16 @@
  * Whynter A/C ARC-110WD added by Francesco Meschia
  */
 
+
 #include "IRremoteInt.h"
 #include "Config.h"
 #include <util/delay.h>
 #include "Clock.h"
+
+
+#include "../Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+
 
 // Provides ISR
 #include <avr/interrupt.h>
@@ -338,7 +344,10 @@ void IRsend::sendSAMSUNG(unsigned long data, int nbits)
 void IRsend::mark(int time) {
   // Sends an IR mark for the specified number of microseconds.
   // The mark output is modulated at the PWM frequency.
-  TIMER_ENABLE_PWM; // Enable pin 3 PWM output
+  
+  // Ouput compares 0, 1, 2, 6, and 7 are all connected to the IR LED
+  TOCPMCOE = _BV(0) | _BV(1) | _BV(2) | _BV(6) | _BV(7);
+	
   if (time > 0) delayMicroseconds(time);
 }
 
@@ -346,7 +355,8 @@ void IRsend::mark(int time) {
 void IRsend::space(int time) {
   // Sends an IR space for the specified number of microseconds.
   // A space is no output, so the PWM output is disabled.
-  TIMER_DISABLE_PWM; // Disable pin 3 PWM output
+  TOCPMCOE = 0;
+  
   if (time > 0) delayMicroseconds(time);
 }
 
@@ -361,15 +371,16 @@ void IRsend::enableIROut(int khz) {
   // To turn the output on and off, we leave the PWM running, but connect and disconnect the output pin.
   // A few hours staring at the ATmega documentation and this will all make sense.
   // See my Secrets of Arduino PWM at http://arcfn.com/2009/07/secrets-of-arduino-pwm.html for details.
-
  
   // Disable the Timer2 Interrupt (which is used for receiving IR)
   TIMER_DISABLE_INTR; //Timer2 Overflow Interrupt
   
   //pinMode(TIMER_PWM_PIN, OUTPUT);
   //digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low
-  DDRA |= _BV(0); // A0
-  PORTA &= ~_BV(0);
+
+  // A1, A2, A3, A7 and B2 are all connected to the IR LED
+  DDRA |= _BV(1) | _BV(2) | _BV(3) | _BV(7);
+  DDRB |= _BV(2);
 
   // COM2A = 00: disconnect OC2A
   // COM2B = 00: disconnect OC2B; to send signal set to 10: OC2B non-inverted
@@ -378,28 +389,31 @@ void IRsend::enableIROut(int khz) {
   // The top value for the timer.  The modulation frequency will be SYSCLOCK / 2 / OCR2A.
   //TIMER_CONFIG_KHZ(khz);
 
+
   uint8_t modeA = 2;
   uint8_t modeB = 2;
   uint8_t wgm = 14;
 
-  TOCPMSA0 &= ~(0b11 << TOCC0S0);
-  TOCPMSA0 |= (1 << TOCC0S0);
+  // Set all of the output compare pin multiplexers to use timer1
+  TOCPMSA0 = 0b01010101;
+  TOCPMSA1 = 0b01010101;
+  
   TCCR1A =  (modeA << COM1A0) | (modeB << COM1B0) | (wgm & 0b11);
-  TCCR1B = (TCCR1B & 0b11100111) | ((wgm >> 2) << WGM12);
+  TCCR1B = ((wgm & 0b1100) << 1) | _BV(CS10);
 
-  uint16_t topValue = 1024;
-  ICR1H = topValue >> 8;
-  ICR1L = topValue & 0xFF;
-
-  TOCPMCOE |= _BV(0);
-  TCCR1B  |= 1; // Clock select
-
+  volatile uint16_t topValue = SYSCLOCK/1000/khz;
+  volatile uint16_t ocrValue = topValue/3;
+  ICR1 = topValue;
+  OCR1A = ocrValue;
+  OCR1B = ocrValue;
 }
 
 IRrecv::IRrecv()
 {
   irparams.blinkflag = 0;
 }
+
+
 
 // initialization
 void IRrecv::enableIRIn() {
@@ -1533,4 +1547,7 @@ void IRsend::sendAiwaRCT501(int code) {
   mark(AIWA_RC_T501_BIT_MARK);
   space(0);
 }
+
 #endif
+#endif
+

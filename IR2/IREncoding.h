@@ -9,10 +9,15 @@
 #ifndef IRENCODING_H_
 #define IRENCODING_H_
 
-#include "IRremoteInt.h"
+
+#include "../Config.h"
+#include <inttypes.h>
+
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR2)
+
 
 #define PULSE_MODULATION_MAX_HEADER_LENGTH 4
-#define NUM_IR_ENCODINGS 25
+#define NUM_IR_ENCODINGS 7
 
 // Most IR Protocols use either pulse width or pulse distance encoding
 // and vary primarily in the header pulses, specific timing, number of bits.
@@ -33,9 +38,5 @@ struct PulseModulationEncoding {
 
 bool GetIREncoding(uint8_t i, PulseModulationEncoding *result);
 
-struct IRCode {
-    int32_t data;
-    int8_t protocol;
-};
-
 #endif /* IRENCODING_H_ */
+#endif

@@ -17,6 +17,10 @@
 #ifndef IRremoteint_h
 #define IRremoteint_h
 
+
+#include "../Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+
 #include <inttypes.h>
 #include "Config.h"
 #include "IRremote.h"
@@ -493,7 +497,8 @@ extern volatile irparams_t irparams;
 #define BLINKLED_OFF() (PORTA &= ~_BV(0))
 #endif
 
-#define IR_READ_PIN() (PINA & _BV(3))
+#define IR_READ_PIN() (PINA & _BV(0))
 
 
+#endif
 #endif

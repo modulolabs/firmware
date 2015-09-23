@@ -9,6 +9,10 @@
 #include <avr/io.h>
 
 
+#include "../Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+
+
 static void mark(int time) {
   // Sends an IR mark for the specified number of microseconds.
   // The mark output is modulated at the PWM frequency.
@@ -110,3 +114,4 @@ static bool transmitPulseModulation(uint32_t data, const PulseModulationEncoding
 	return false;
 }
 
+#endif

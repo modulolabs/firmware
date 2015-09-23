@@ -1,21 +1,22 @@
 /*
- * IRModule.cpp
+ * IR2Module.cpp
  *
- * Created: 3/23/2015 5:36:41 PM
+ * Created: 9/12/2015 9:16:55 AM
  *  Author: ekt
  */ 
 
+
 #include "Config.h"
 
-#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR2)
 
 #include <avr/io.h>
 #include "Modulo.h"
 #include "Clock.h"
 #include "ADC.h"
 #include <util/delay.h>
-#include "IRremote/IRremote.h"
-#include "IRremote/IREncoding.h"
+#include "IR2/IR2.h"
+
 
 
 const char *ModuloDeviceType = "co.modulo.ir";
@@ -35,21 +36,19 @@ const char *ModuloDocURL = "modulo.co/docs/irremote";
 #define EVENT_RECEIVED 0
 
 
-static const int MAX_CODES_RECEIVED = 1;
-uint8_t _numCodesReceived = 0;
-IRCode _codesReceived[MAX_CODES_RECEIVED];
-IRCode _codeToSend;
+uint32_t receivedCode = 0;
+int8_t receivedProtocol = -1;
+
 bool _hasCodeToSend = false;
 
 bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
 
 	switch(command) {
 		case FUNCTION_RECEIVE:
-			if (_numCodesReceived) {
-				volatile IRCode *code = &_codesReceived[_numCodesReceived-1];
-				buffer->AppendValue<uint8_t>((uint8_t)code->protocol);
-				buffer->AppendValue<uint8_t>((uint32_t)code->data);
-				_numCodesReceived--;
+			if (receivedProtocol != -1) {
+				buffer->AppendValue<uint8_t>(receivedProtocol);
+				buffer->AppendValue<uint32_t>(receivedCode);
+				receivedProtocol = -1;
 				return true;
 			}
 			return false;
@@ -64,16 +63,18 @@ bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloRea
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 	switch (buffer.GetCommand()) {
 		case FUNCTION_RECEIVE:
-			return false;
+		return false;
 		case FUNCTION_CAN_SEND:
-			return buffer.GetSize() == 0;
+		return buffer.GetSize() == 0;
 		case FUNCTION_SEND:
-			if (_hasCodeToSend) {
-				return false;
-			}
-			_codeToSend.protocol = buffer.Get<uint8_t>(0);
-			_codeToSend.data = buffer.Get<uint32_t>(1);
-			return true;
+		if (_hasCodeToSend) {
+			return false;
+		}
+		/*
+		_codeToSend.protocol = buffer.Get<uint8_t>(0);
+		_codeToSend.data = buffer.Get<uint32_t>(1);
+		*/
+		return true;
 	}
 
 	return false;
@@ -84,22 +85,22 @@ void ModuloReset() {
 }
 
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
-#if 0
+	#if 0
 	if (buttonPressed or buttonReleased) {
 		*eventCode = EVENT_BUTTON_CHANGED;
 		*eventData = (buttonPressed << 8) | buttonReleased;
 		return true;
-		} else if (positionChanged) {
+	} else if (positionChanged) {
 		*eventCode = EVENT_POSITION_CHANGED;
 		*eventData = (hPos << 8) | (vPos);
 		return true;
 	}
-#endif
+	#endif
 	return false;
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
-#if 0
+	#if 0
 	if (eventCode == EVENT_BUTTON_CHANGED) {
 		buttonPressed = false;
 		buttonReleased = false;
@@ -107,33 +108,17 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 	if (eventCode == EVENT_POSITION_CHANGED) {
 		positionChanged = false;
 	}
-#endif
+	#endif
 }
 
-IRrecv irrecv;
-IRsend send;
-decode_results irDecodeResults;
 
 void SendCode() {
-	//send.enableIROut(38);
-	send.sendRC5(_codeToSend.data, irDecodeResults.bits);
+
 	_hasCodeToSend = false;
-	irrecv.enableIRIn();
 }
 
 void ReceiveCode() {
-	noInterrupts();
 	
-	// Shift the codes over by one
-	for (int i=_numCodesReceived-1; i >= 1; i--) {
-		_codesReceived[i] = _codesReceived[i-1];
-	}
-	
-	_numCodesReceived = (_numCodesReceived+1 < MAX_CODES_RECEIVED) ? _numCodesReceived+1 : MAX_CODES_RECEIVED;
-	_codesReceived[0].data = irDecodeResults.value;
-	_codesReceived[0].protocol = irDecodeResults.decode_type;
-
-	interrupts();
 }
 
 int main(void)
@@ -142,37 +127,30 @@ int main(void)
 	
 	ModuloInit(&DDRA, &PORTA, _BV(STATUS_LED_PIN));
 
+	IR2ReceiveEnable();
+
 	//uint8_t mask = 0b10001110;
 	
 	//DDRA |= mask;
 	//PORTA |= mask;
 	
 	//PORTA &= ~_BV(2);
-  
+	
 	//send.enableIROut(38);
 	//send.mark(1);
 	//while (1) {
-		
+	
 	//}
-
-	irrecv.enableIRIn();
 
 	while(1)
 	{
-		if (_hasCodeToSend) {
-			_delay_ms(2000);
-			SendCode();
-		}
-		if (irrecv.decode(&irDecodeResults)) {
-			//ModuloSetStatus(ModuloStatusOn);
-			//PORTA |= _BV(STATUS_LED_PIN);
-			//asm("nop");
-			
-			ReceiveCode();
-			//delay(100);
-			//ModuloSetStatus(ModuloStatusOff);
-			//PORTA &= ~_BV(STATUS_LED_PIN);
-			irrecv.resume();
+		if (IR2IsReceiveComplete()) {
+			if (receivedProtocol == -1) {
+				if (IR2Decode(&receivedProtocol, &receivedCode)) {
+					asm("nop");
+				}
+			}
+			IR2ReceiveEnable();
 		}
 		
 		bool val = !(PINA & _BV(IR_SENSE_PIN));

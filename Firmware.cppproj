@@ -188,6 +188,27 @@
     <Compile Include="I2CMaster.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="IR2\IR2.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR2\IR2.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR2\IR2Decode.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR2\IR2Send.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR2\IREncoding.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR2\IREncoding.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Modules\IR2Module.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Modules\TempProbe.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -200,15 +221,9 @@
     <Compile Include="IRremote\IRDecode.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="IRremote\IREncoding.cpp">
+    <Compile Include="IRremote\IRremote.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <None Include="IRremote\IREncoding.h">
-      <SubType>compile</SubType>
-    </None>
-    <None Include="IRremote\IRremote.cpp">
-      <SubType>compile</SubType>
-    </None>
     <None Include="IRremote\IRremote.h">
       <SubType>compile</SubType>
     </None>
@@ -272,6 +287,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="IR2\" />
     <Folder Include="Modules" />
     <Folder Include="IRremote" />
   </ItemGroup>

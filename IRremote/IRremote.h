@@ -17,6 +17,10 @@
 #ifndef IRremote_h
 #define IRremote_h
 
+
+#include "../Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+
 #include <inttypes.h>
 
 // The following are compile-time library options.
@@ -150,10 +154,11 @@ public:
 // Some useful constants
 
 #define USECPERTICK 50  // microseconds per clock interrupt tick
-#define RAWBUF 128 // Length of raw duration buffer
+#define RAWBUF 64 // Length of raw duration buffer
 
 // Marks tend to be 100us too long, and spaces 100us too short
 // when received due to sensor lag.
 #define MARK_EXCESS 100
 
+#endif
 #endif

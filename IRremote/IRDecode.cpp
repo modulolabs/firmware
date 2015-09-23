@@ -5,6 +5,9 @@
  *  Author: ekt
  */ 
 
+#include "../Config.h"
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
+
 #include "IRremoteInt.h"
 #include "IRremote.h"
 #include "IREncoding.h"
@@ -128,3 +131,4 @@ int IRrecv::decode(decode_results *results) {
 #endif
 
 
+#endif

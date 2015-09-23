@@ -91,6 +91,13 @@ void PWM::SetCompareEnabled(bool enabled) {
     } else {
         TOCPMCOE &= ~_BV(_channel);
     }
+	
+	if (_timerNum == 1) {
+		TCNT1 = 0;
+	}
+	if (_timerNum == 2) {
+		TCNT2 = 0;
+	}
 }
 
 void PWM::_SetTop(uint16_t value) {
