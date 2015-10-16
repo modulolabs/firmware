@@ -28,7 +28,8 @@ const char *ModuloDocURL = "modulo.co/docs/motor";
 enum FunctionCode {
 	FunctionSetValue,
     FunctionSetEnabled,
-    FunctionSetFrequency
+    FunctionSetFrequency,
+	FunctionSetCurrentLimit
 };
 
 /*
@@ -61,6 +62,9 @@ PWM pwm[] = {PWM(2,6),  // Timer 2, output compare 6
 			 PWM(2,7),  // Timer 2, output compare 7
 			 PWM(1,0),  // Timer 1, output compare 0
 			 PWM(1,1)}; // Timer 1, output compare 1
+
+
+void setCurrentLimit(int newCurrentLimit);
 
 void _setValue(uint8_t channel, uint16_t value) {
     if (channel >= 4) {
@@ -146,6 +150,12 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
             }
             _setFrequency(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(1));
             return true;
+		case FunctionSetCurrentLimit:
+			if (buffer.GetSize() != 1) {
+				return false;
+			}
+			setCurrentLimit(buffer.Get<uint8_t>(0));
+			return true;
 	}
 	return false;
 }
@@ -181,6 +191,8 @@ void ModuloReset() {
 #define CS_PIN 3
 #define CS_DDR DDRA
 
+int currentLimit = 0;
+
 void currentIncr(int count) {
 	UD_PORT |= _BV(UD_PIN);
 	_delay_us(1);
@@ -194,7 +206,11 @@ void currentIncr(int count) {
 			
 		UD_PORT |= _BV(UD_PIN);
 		_delay_us(1);
-			
+	}
+	
+	currentLimit += count;
+	if (currentLimit > 64) {
+		currentLimit = 64;
 	}
 	
 	CS_PORT |= _BV(CS_PIN);
@@ -214,8 +230,24 @@ void currentDecr(int count) {
 		_delay_us(1);	
 	}
 	
+	currentLimit -= count;
+	if (currentLimit < 0) {
+		currentLimit = 0;
+	}
+	
 	CS_PORT |= _BV(CS_PIN);
 	_delay_us(1);	
+}
+
+
+
+void setCurrentLimit(int newCurrentLimit) {
+	int delta = newCurrentLimit-currentLimit;
+	if (delta > 0) {
+		currentIncr(delta);
+	} else if (delta < 0) {
+		currentDecr(-delta);
+	}
 }
 
 int main(void)
@@ -251,7 +283,9 @@ int main(void)
 	*/
 	
 	currentDecr(64);
-	currentIncr(64);
+	currentLimit = 0;
+	
+	setCurrentLimit(64);
 	
 #if 0
 
