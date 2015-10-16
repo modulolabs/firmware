@@ -20,8 +20,8 @@ const char *ModuloDocURL = "modulo.co/docs/io";
 GPIO 0 - PB2 - PCINT10 - ADC8 - TOCC7
 GPIO 1 - PA2 - PCINT2 - ADC2 - TOCC1
 GPIO 2 - PA1 - PCINT1 - ADC1 - TOCC0
-GPIO 3 - PA0 - PCINT0 - ADC0
-GPIO 4 - PA3 - PCINT3 - ADC3 - TOCC2
+GPIO 3 - PA3 - PCINT3 - ADC3 - TOCC2
+GPIO 4 - PA0 - PCINT0 - ADC0
 GPIO 5 - PB0 - PCINT8 - ADC11
 GPIO 6 - PB1 - PCINT9 - ADC10
 GPIO 7 - PA7 - PCINT7 - ADC7
@@ -74,16 +74,16 @@ static volatile uint8_t *GPIO_PIN[] = {
 	&PINA
 };
 
-static const int8_t GPIO_TIMER_COMPARE[] = {7, 1, 0, -1, 2, -1, -1, -1};
+static const int8_t GPIO_TIMER_COMPARE[] = {7, 1, 0, 2, -1, -1, -1, -1};
 
-static const uint8_t GPIO_PIN_NUMBER[] = {2, 2, 1, 0, 3, 0, 1, 7};
+static const uint8_t GPIO_PIN_NUMBER[] = {2, 2, 1, 3, 0, 0, 1, 7};
 
 static const uint8_t GPIO_MASK[] = {
-	_BV(2), _BV(2), _BV(1), _BV(0), _BV(3), _BV(0), _BV(1), _BV(7)
+	_BV(2), _BV(2), _BV(1), _BV(3), _BV(0), _BV(0), _BV(1), _BV(7)
 };
 
 static const uint8_t GPIO_ADC[] = {
-	8, 2, 1, 0, 3, 11, 10, 7
+	8, 2, 1, 3, 0, 11, 10, 7
 };
 
 static volatile uint16_t _pwmValues[8] = {0,0,0,0,0,0,0,0};
@@ -97,7 +97,7 @@ PWM pwm1(1/*timer*/,1 /*channel*/);
 PWM pwm0(2/*timer*/, 0 /*channel*/);
 PWM pwm2(1/*timer*/, 2 /*channel*/);
 
-PWM *pwms[8] = {&pwm7, &pwm1, &pwm0, NULL, &pwm2, NULL, NULL, NULL};
+PWM *pwms[8] = {&pwm7, &pwm1, &pwm0, &pwm2, NULL, NULL, NULL, NULL};
 
 void _setPWMFrequency(uint8_t pin, uint16_t frequency) {
     if (pwms[pin]) {
@@ -291,14 +291,14 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
             if (buffer.GetSize() != 2) {
                 return false;
             }
-            //_setDataDirection(buffer.Get<uint8_t>(0),
-            //                  buffer.Get<uint8_t>(1));
+            _setDirection(buffer.Get<uint8_t>(0),
+                              buffer.Get<uint8_t>(1));
             return true;
         case FUNCTION_SET_DATA_DIRECTIONS:
             if (buffer.GetSize() != 1) {
                 return false;
             }
-            //_setDataDirections(buffer.Get<uint8_t>(0));
+            _setDirections(buffer.Get<uint8_t>(0));
             return true;
         case FUNCTION_SET_DIGITAL_OUTPUT:
             if (buffer.GetSize() != 2) {
