@@ -26,7 +26,7 @@
 #define MODULE_TYPE_TEMP_PROBE 7
 #define MODULE_TYPE_IR2 8
 
-#define MODULE_TYPE MODULE_TYPE_KNOB
+#define MODULE_TYPE MODULE_TYPE_JOYSTICK
 
 #ifndef MODULE_TYPE
 #error No module type defined

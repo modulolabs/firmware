@@ -14,7 +14,6 @@ void TwoWireInit();
 void TwoWireSetDeviceAddress(uint8_t address);
 uint8_t TwoWireGetDeviceAddress();
 
-bool TwoWireWriteCallback(const ModuloWriteBuffer &buffer);
-bool TwoWireReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer);
+int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLen);
 
 #endif /* TWOWIRE_H_ */

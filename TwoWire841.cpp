@@ -48,6 +48,13 @@ static void _Acknowledge(bool ack, bool complete=false) {
 	TWSCRB |= _BV(TWCMD1) | (complete ? 0 : _BV(TWCMD0));
 }
 
+
+#define TWI_BUFFER_SIZE 32
+static uint8_t twiBuffer[TWI_BUFFER_SIZE];
+static uint8_t twiBufferLen = 0;
+static uint8_t twiReadPos = 0;
+static uint8_t twiAddress = 0;
+
 // The two wire interrupt service routine
 ISR(TWI_SLAVE_vect)
 {
@@ -66,26 +73,26 @@ ISR(TWI_SLAVE_vect)
 	// Address received
 	if (isAddressOrStop and addressReceived) {
 		// The address is in the high 7 bits, the RD/WR bit is in the lsb
-		uint8_t address = TWSD;
+		twiAddress = TWSD >> 1;
 
 		if (isReadOperation) {
-			moduloReadBuffer.Reset(address);
-			bool retval = TwoWireReadCallback(moduloWriteBuffer.GetCommand(), moduloWriteBuffer, &moduloReadBuffer);
-			_Acknowledge(retval /*ack*/, false /*complete*/);
-			
-			moduloReadBuffer.AppendValue(moduloReadBuffer.ComputeCRC(address));
+			_Acknowledge(twiBufferLen > 0 /*ack*/, false /*complete*/);
 		} else {
 			_Acknowledge(true /*ack*/, false /*complete*/);
-			moduloWriteBuffer.Reset(address);
+			twiBufferLen = 0;
+			twiAddress = twiAddress;
 		}
 	}
 	
 	// Data Read
 	if (dataInterruptFlag and isReadOperation) {
-		uint8_t data = 0;
-		bool ack = moduloReadBuffer.GetNextByte(&data);
-		TWSD = data;
-		_Acknowledge(ack /*ack*/, !ack /*complete*/);
+		if (twiReadPos < twiBufferLen) {
+			TWSD = twiBuffer[twiReadPos++];
+			_Acknowledge(true /*ack*/, false /*complete*/);
+		} else {
+			TWSD = 0;
+			_Acknowledge(false /*ack*/, true /*complete*/);
+		}
 	}
 	
 	// Data Write
@@ -93,15 +100,18 @@ ISR(TWI_SLAVE_vect)
 		uint8_t data = TWSD;
 		_Acknowledge(true, false);
 
-		moduloWriteBuffer.Append(data);
+		if (twiBufferLen < TWI_BUFFER_SIZE) {
+			twiBuffer[twiBufferLen++] = data;
+		}
 	}
 	
 	// Stop
 	if (isAddressOrStop and !addressReceived) {
 		_Acknowledge(true /*ack*/, true /*complete*/);
 		
-		if (!isReadOperation and moduloWriteBuffer.IsValid()) {
-			TwoWireWriteCallback(moduloWriteBuffer);
+		if (!isReadOperation and twiBufferLen != 0) {
+			twiReadPos = 0;
+			twiBufferLen = TwoWireCallback(twiAddress, twiBuffer, twiBufferLen, TWI_BUFFER_SIZE);
 		}
 	}
 }

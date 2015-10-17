@@ -19,20 +19,27 @@ class ModuloWriteBuffer;
 extern ModuloWriteBuffer moduloWriteBuffer;
 extern ModuloReadBuffer moduloReadBuffer;
 
-#define MODULO_MAX_BUFFER_SIZE 31
+#define MODULO_MAX_BUFFER_SIZE 32
 
 // Buffer for storing data transmitted from the master to this device.
 class ModuloWriteBuffer {
-	public:
+
+	static const int COMMAND = 0;
+	static const int EXPECTED_LENGTH = 1;
+	static const int DATA_START = 2;
+		
+public:
 	ModuloWriteBuffer();
 	void Reset(uint8_t address);
 
 	// Append a value to the buffer
-	// Return false if there is not enough space or the CRC fails.
 	bool Append(const uint8_t value);
 
 	uint8_t GetSize() const {
-		return _length;
+		if (_length < DATA_START+1) {
+			return 0;
+		}
+		return _length-(DATA_START+1);
 	}
 
 	// Get the next value, of type T, from the buffer.
@@ -40,16 +47,16 @@ class ModuloWriteBuffer {
 	template <class T>
 	T Get(uint8_t offset) const {
 
-		if (offset+sizeof(T) > _length) {
+		if (offset+sizeof(T)+DATA_START > _length) {
 			return T();
 		}
 		T retval;
-		memcpy(&retval, _data+offset, sizeof(T));
+		memcpy(&retval, _data+offset+DATA_START, sizeof(T));
 		return retval;
 	}
 
 	uint8_t GetCommand() const {
-		return _command;
+		return _data[COMMAND];
 	}
 	
 	bool IsValid();
@@ -58,14 +65,13 @@ class ModuloWriteBuffer {
 		return _address;
 	}
 
-	private:
-	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+private:
 	uint8_t _address;
-	uint8_t _command;
 	uint8_t _length;
-	uint8_t _expectedLength;
 	uint8_t _computedCRC;
-	int16_t _receivedCRC;
+	
+	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+
 };
 
 
@@ -83,7 +89,7 @@ class ModuloReadBuffer {
 	// Return false if there's not enough room in the buffer.
 	template <class T>
 	bool AppendValue(const T &value) {
-		if (_GetLength()+sizeof(T) >= MODULO_MAX_BUFFER_SIZE-1) {
+		if (GetLength()+sizeof(T) >= MODULO_MAX_BUFFER_SIZE-1) {
 			return false;
 		}
 		memcpy(_data+_length, &value, sizeof(T));
@@ -101,24 +107,26 @@ class ModuloReadBuffer {
 
 	uint8_t ComputeCRC(uint8_t address) {
 		uint8_t crc = _crc8_ccitt_update(0, address);
-		for (int i=0; i < _GetLength(); i++) {
+		for (int i=0; i < GetLength(); i++) {
 			crc = _crc8_ccitt_update(crc, _data[i]);
 		}
 		return crc;
 	}
 
 	bool GetNextByte(uint8_t *data) {
-		if (_readPosition < _GetLength()) {
+		if (_readPosition < GetLength()) {
 			*data = _data[_readPosition++];
 			return true;
 		}
 		return false;
 	}
 
-	private:
-	uint8_t _GetLength() const {
+	uint8_t GetLength() const {
 		return _length;
 	}
+	
+	private:
+
 
 	uint8_t _length;
 	uint8_t _address;
