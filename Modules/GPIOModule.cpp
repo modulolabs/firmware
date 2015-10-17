@@ -273,11 +273,17 @@ enum GPIOCommands {
     FUNCTION_SET_PWM_FREQUENCY
 };
 
+int8_t selectedChannel = -1;
+
 bool ModuloWrite(const ModuloWriteBuffer &buffer)
 {
     switch (buffer.GetCommand()) {
         case FUNCTION_GET_DIGITAL_INPUT:
-            return buffer.GetSize() == 1;
+			if (buffer.GetSize() == 1) {
+				selectedChannel = buffer.Get<uint8_t>(0);
+				return true;
+			}
+			return false;
         case FUNCTION_GET_DIGITAL_INPUTS:
             return true;
         case FUNCTION_GET_ANALOG_INPUT:
@@ -356,10 +362,10 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
     return false;
 }
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+bool ModuloRead(uint8_t command,  ModuloReadBuffer *buffer) {
     switch (command) {
         case FUNCTION_GET_DIGITAL_INPUT:
-            buffer->AppendValue(_getDigitalInput(writeBuffer.Get<uint8_t>(0)));
+            buffer->AppendValue(_getDigitalInput(selectedChannel));
             return true;
         case FUNCTION_GET_DIGITAL_INPUTS:
             buffer->AppendValue(_getDigitalInputs());

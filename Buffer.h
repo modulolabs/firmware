@@ -19,7 +19,6 @@ class ModuloWriteBuffer;
 extern ModuloWriteBuffer moduloWriteBuffer;
 extern ModuloReadBuffer moduloReadBuffer;
 
-#define MODULO_MAX_BUFFER_SIZE 32
 
 // Buffer for storing data transmitted from the master to this device.
 class ModuloWriteBuffer {
@@ -29,11 +28,7 @@ class ModuloWriteBuffer {
 	static const int DATA_START = 2;
 		
 public:
-	ModuloWriteBuffer();
-	void Reset(uint8_t address);
-
-	// Append a value to the buffer
-	bool Append(const uint8_t value);
+	ModuloWriteBuffer(uint8_t address, uint8_t *data, uint8_t maxLen);
 
 	uint8_t GetSize() const {
 		if (_length < DATA_START+1) {
@@ -70,26 +65,25 @@ private:
 	uint8_t _length;
 	uint8_t _computedCRC;
 	
-	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
-
+	uint8_t *_data;
 };
 
 
 class ModuloReadBuffer {
 	public:
-	ModuloReadBuffer() {}
-
-	void Reset(uint8_t address) {
+	ModuloReadBuffer(uint8_t address, uint8_t *data, uint8_t maxLen) {
 		_address = address;
 		_readPosition = 0;
 		_length = 0;
+		_data = data;
+		_maxLen = maxLen;
 	}
 
 	// Append a value of type T to the buffer.
 	// Return false if there's not enough room in the buffer.
 	template <class T>
 	bool AppendValue(const T &value) {
-		if (GetLength()+sizeof(T) >= MODULO_MAX_BUFFER_SIZE-1) {
+		if (GetLength()+sizeof(T) >= _maxLen-1) {
 			return false;
 		}
 		memcpy(_data+_length, &value, sizeof(T));
@@ -125,12 +119,13 @@ class ModuloReadBuffer {
 		return _length;
 	}
 	
-	private:
+private:
 
 
 	uint8_t _length;
 	uint8_t _address;
-	uint8_t _data[MODULO_MAX_BUFFER_SIZE];
+	uint8_t *_data;
+	uint8_t _maxLen;
 	uint8_t _readPosition;
 };
 

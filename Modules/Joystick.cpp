@@ -40,7 +40,7 @@ const char *ModuloDocURL = "modulo.co/docs/joystick";
 #define EVENT_POSITION_CHANGED 1
 
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
    switch(command) {
         case FUNCTION_GET_BUTTON:
             buffer->AppendValue<uint8_t>(buttonState);

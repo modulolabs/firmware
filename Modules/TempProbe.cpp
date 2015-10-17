@@ -59,7 +59,7 @@ uint32_t R_values[] = {
 	858,
 };
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
    switch(command) {
         case FUNCTION_GET_TEMPERATURE:
             buffer->AppendValue<uint16_t>((uint16_t)temperature);

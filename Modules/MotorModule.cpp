@@ -160,8 +160,8 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 	return false;
 }
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
-    switch (writeBuffer.GetCommand()) {
+bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
+    switch (command) {
     }
     return false;
 }

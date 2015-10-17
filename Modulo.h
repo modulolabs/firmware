@@ -19,7 +19,7 @@
 
 extern const uint8_t moduloBroadcastAddress;
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &, ModuloReadBuffer *buffer);
+bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer);
 bool ModuloWrite(const ModuloWriteBuffer &buffer);
 void ModuloReset();
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData);

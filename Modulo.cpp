@@ -134,7 +134,13 @@ static bool _shouldReplyToBroadcastRead = false;
 static uint8_t _eventCode = 0;
 static uint16_t _eventData = 0;
 
-static bool _WriteCallback(const ModuloWriteBuffer &buffer) {
+static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t maxLen) {
+	ModuloWriteBuffer buffer(address, data, len);
+
+	if (!buffer.IsValid()) {
+		return 0;
+	}
+
     _shouldReplyToBroadcastRead = false;
 
     if (buffer.GetAddress() == moduloBroadcastAddress) {
@@ -202,12 +208,12 @@ static bool _WriteCallback(const ModuloWriteBuffer &buffer) {
     return ModuloWrite(buffer);
 }
 
-static bool _ReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *readBuffer) {
-    if (writeBuffer.GetAddress() == moduloBroadcastAddress) {
+static bool _ReadCallback(uint8_t address, uint8_t command, ModuloReadBuffer *readBuffer) {
+    if (address== moduloBroadcastAddress) {
         if (!_shouldReplyToBroadcastRead) {
             return false;
         }
-        switch(writeBuffer.GetCommand()) {
+        switch(command) {
             case BroadcastCommandGetNextDeviceID:
                 {
                     // We have to return the deviceID in big endian order, so that if a collision occurs
@@ -251,30 +257,25 @@ static bool _ReadCallback(uint8_t command, const ModuloWriteBuffer &writeBuffer,
     }
 
 
-    return ModuloRead(command, writeBuffer, readBuffer);
+    return ModuloRead(command, readBuffer);
 }
 
 int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLen) {
-	moduloWriteBuffer.Reset(address);
-	for (int i=0; i < len; i++) {
-		moduloWriteBuffer.Append(buffer[i]);
-	}
-	if (moduloWriteBuffer.IsValid()) {
-		_WriteCallback(moduloWriteBuffer);
-	}
+	
+	
+	uint8_t command = buffer[0];		
+	_ModuloWrite(address, buffer, len, maxLen);
 
-	moduloReadBuffer.Reset(address);
-	if (!_ReadCallback(moduloWriteBuffer.GetCommand(), moduloWriteBuffer, &moduloReadBuffer)) {
+	// Now generate data to send. Note that this overwrites the received data, so
+	// don't try to access moduloWriteBuffer past this point.
+	ModuloReadBuffer moduloReadBuffer(address, buffer, maxLen);
+	if (!_ReadCallback(address, command, &moduloReadBuffer)) {
+		// Nothing to send back.
 		return 0;
 	}
 
 	moduloReadBuffer.AppendValue(moduloReadBuffer.ComputeCRC(address));
-
-	volatile int readLen = 0;
-	while (readLen < maxLen and moduloReadBuffer.GetNextByte(buffer + readLen)) {
-		readLen++;
-	}
-	return readLen;
+	return moduloReadBuffer.GetLength();
 }
 
 

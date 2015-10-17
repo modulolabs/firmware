@@ -41,7 +41,7 @@ int8_t receivedProtocol = -1;
 
 bool _hasCodeToSend = false;
 
-bool ModuloRead(uint8_t command, const ModuloWriteBuffer &writeBuffer, ModuloReadBuffer *buffer) {
+bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
 
 	switch(command) {
 		case FUNCTION_RECEIVE:
