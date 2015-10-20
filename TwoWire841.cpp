@@ -55,6 +55,14 @@ static uint8_t twiBufferLen = 0;
 static uint8_t twiReadPos = 0;
 static uint8_t twiAddress = 0;
 
+enum TWIState {
+	TWIStateIdle,
+	TWIStateRead,
+	TWIStateWrite
+};
+
+static TWIState twiState = TWIStateIdle;
+
 // The two wire interrupt service routine
 ISR(TWI_SLAVE_vect)
 {
@@ -70,20 +78,31 @@ ISR(TWI_SLAVE_vect)
 	//volatile bool collision = (TWSSRA & _BV(TWC));
 	//volatile bool busError = (TWSSRA & _BV(TWBE));
 	
-	// Address received
-	if (isAddressOrStop and addressReceived) {
+	// Handle address received and stop conditions
+	if (isAddressOrStop) {
+		// Send an ack unless a read is starting and there are no bytes to read.
+		bool ack = (twiBufferLen > 0) or (!isReadOperation) or (!addressReceived);
+		_Acknowledge(ack, !addressReceived /*complete*/);
+		
+		// If we were previously in a write, then execute the callback and setup for a read.
+		if ((twiState == TWIStateWrite) and twiBufferLen != 0) {
+			twiBufferLen = TwoWireCallback(twiAddress, twiBuffer, twiBufferLen, TWI_BUFFER_SIZE);		
+			twiReadPos = 0;
+		}
+		
+		if (!addressReceived) {
+			twiState = TWIStateIdle;
+		} else if (isReadOperation) {
+			twiState = TWIStateRead;
+		} else {
+			twiState = TWIStateWrite;
+			twiBufferLen = 0;
+		}
+		
 		// The address is in the high 7 bits, the RD/WR bit is in the lsb
 		twiAddress = TWSD >> 1;
-
-		if (isReadOperation) {
-			_Acknowledge(twiBufferLen > 0 /*ack*/, false /*complete*/);
-		} else {
-			_Acknowledge(true /*ack*/, false /*complete*/);
-			twiBufferLen = 0;
-			twiAddress = twiAddress;
-		}
 	}
-	
+
 	// Data Read
 	if (dataInterruptFlag and isReadOperation) {
 		if (twiReadPos < twiBufferLen) {
@@ -104,15 +123,6 @@ ISR(TWI_SLAVE_vect)
 			twiBuffer[twiBufferLen++] = data;
 		}
 	}
-	
-	// Stop
-	if (isAddressOrStop and !addressReceived) {
-		_Acknowledge(true /*ack*/, true /*complete*/);
-		
-		if (!isReadOperation and twiBufferLen != 0) {
-			twiReadPos = 0;
-			twiBufferLen = TwoWireCallback(twiAddress, twiBuffer, twiBufferLen, TWI_BUFFER_SIZE);
-		}
-	}
+
 }
 #endif
