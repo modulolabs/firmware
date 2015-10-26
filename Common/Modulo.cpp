@@ -52,7 +52,7 @@ void ModuloInit(
 	TwoWireSetDeviceAddress(0);
 
 	// Ensure that we have a valid device id
-	ModuloGetDeviceID();
+	GetDeviceID();
     ModuloReset();
 	ModuloSetStatus(ModuloStatusBlinking);
 }
@@ -234,8 +234,6 @@ static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *read
 }
 
 int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLen) {
-	
-	
 	uint8_t command = buffer[0];		
 	_ModuloWrite(address, buffer, len);
 

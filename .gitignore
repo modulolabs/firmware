@@ -26,6 +26,6 @@
 AVR/Debug
 AVR/Release
 
-ARM/Debug
-ARM/Release
+SAMD/Debug
+SAMD/Release
 
