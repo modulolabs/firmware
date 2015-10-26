@@ -65,7 +65,8 @@ uint16_t ModuloGetDeviceID() {
 void ModuloInit(
 	volatile uint8_t *statusDDR,
 	volatile uint8_t *statusPort,
-	uint8_t statusMask)
+	uint8_t statusMask,
+	bool useTwoWireInterrupt)
 {
 	_statusDDR = statusDDR;
 	_statusPort = statusPort;
@@ -75,7 +76,7 @@ void ModuloInit(
 		*_statusDDR |= _statusMask;
 	}
 	
-	TwoWireInit();
+	TwoWireInit(useTwoWireInterrupt);
 	TwoWireSetDeviceAddress(0);
 
 	// Ensure that we have a valid device id

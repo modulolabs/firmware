@@ -19,9 +19,14 @@ static volatile uint8_t _deviceAddress = 0;
 #endif
 
 
-void TwoWireInit() {
+void TwoWireInit(bool useInterrupts) {
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
-	TWSCRA = _BV(TWDIE) | _BV(TWASIE) | _BV(TWEN) | _BV(TWSIE);
+	TWSCRA = _BV(TWEN);
+	
+	if (useInterrupts) {
+		TWSCRA |= _BV(TWDIE) | _BV(TWASIE) | _BV(TWSIE);
+	}
+	
 	TWSCRB = _BV(TWHNM);
 
 	// Also listen for message on the broadcast address
@@ -63,9 +68,9 @@ enum TWIState {
 
 static TWIState twiState = TWIStateIdle;
 
-// The two wire interrupt service routine
-ISR(TWI_SLAVE_vect)
-{
+
+
+void TwoWireUpdate() {
 	uint8_t status = TWSSRA;
 	bool dataInterruptFlag = (status & _BV(TWDIF)); // Check whether the data interrupt flag is set
 	bool isAddressOrStop = (status & _BV(TWASIF)); // Get the TWI Address/Stop Interrupt Flag
@@ -125,4 +130,11 @@ ISR(TWI_SLAVE_vect)
 	}
 
 }
+
+// The two wire interrupt service routine
+ISR(TWI_SLAVE_vect)
+{
+	TwoWireUpdate();
+}
+
 #endif

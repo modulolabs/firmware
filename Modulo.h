@@ -41,7 +41,8 @@ enum ModuloStatus {
 void ModuloInit(
 	volatile uint8_t *statusDDR,
 	volatile uint8_t *statusPort,
-	uint8_t statusMask);
+	uint8_t statusMask,
+	bool useTwoWireInterrupt = true);
 	
 void ModuloSetStatus(ModuloStatus status);
 void ModuloUpdateStatusLED();
