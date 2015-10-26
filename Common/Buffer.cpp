@@ -6,16 +6,16 @@
  */ 
 
 #include "Buffer.h"
-#include <util/crc16.h>
+#include "crc.h"
 
 ModuloWriteBuffer::ModuloWriteBuffer(uint8_t address, uint8_t *data, uint8_t len) {
 	_length = len;
 	_address = address;
 	_data = data;
-	_computedCRC = _crc8_ccitt_update(0, address);
+	_computedCRC = crc_update(0, address);
 
 	for (int i=0; (i+1) < len; i++) {
-		_computedCRC = _crc8_ccitt_update(_computedCRC, _data[i]);
+		_computedCRC = crc_update(_computedCRC, _data[i]);
 	}
 }
 

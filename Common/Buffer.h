@@ -10,8 +10,8 @@
 #define BUFFER_H_
 
 #include <inttypes.h>
-#include <util/crc16.h>
 #include <string.h>
+#include "crc.h"
 
 class ModuloReadBuffer;
 class ModuloWriteBuffer;
@@ -100,9 +100,9 @@ class ModuloReadBuffer {
 	}
 
 	uint8_t ComputeCRC(uint8_t address) {
-		uint8_t crc = _crc8_ccitt_update(0, address);
+		uint8_t crc = crc_update(0, address);
 		for (int i=0; i < GetLength(); i++) {
-			crc = _crc8_ccitt_update(crc, _data[i]);
+			crc = crc_update(crc, _data[i]);
 		}
 		return crc;
 	}

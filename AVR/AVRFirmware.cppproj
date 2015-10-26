@@ -170,6 +170,14 @@
       <SubType>compile</SubType>
       <Link>Common\Buffer.h</Link>
     </Compile>
+    <Compile Include="..\Common\crc.cpp">
+      <SubType>compile</SubType>
+      <Link>Common\crc.cpp</Link>
+    </Compile>
+    <Compile Include="..\Common\crc.h">
+      <SubType>compile</SubType>
+      <Link>Common\crc.h</Link>
+    </Compile>
     <Compile Include="..\Common\Modulo.cpp">
       <SubType>compile</SubType>
       <Link>Common\Modulo.cpp</Link>
@@ -195,6 +203,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\Config.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="AVR\DeviceID.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\Fuses.c">

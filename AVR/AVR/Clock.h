@@ -9,8 +9,10 @@
 #ifndef CLOCK_H_
 #define CLOCK_H_
 
-#include <inttypes.h>
 #include "Config.h"
+
+#include <inttypes.h>
+#include <avr/interrupt.h>
 
 #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
 #define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )

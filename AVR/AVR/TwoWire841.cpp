@@ -11,6 +11,8 @@
 #include "Buffer.h"
 #include "TwoWire.h"
 #include "Config.h"
+#include <avr/io.h>
+#include <avr/interrupt.h>
 
 static volatile uint8_t _deviceAddress = 0;
 

@@ -7,14 +7,9 @@
 
 
 #include "Modulo.h"
-#include "Config.h"
-#include "Random.h"
 #include "TwoWire.h"
+#include "DeviceID.h"
 #include <string.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/boot.h>
-#include <avr/eeprom.h>
 
 
 static ModuloStatus _status;
@@ -23,8 +18,6 @@ static volatile uint8_t *_statusPort = NULL;
 static volatile uint8_t _statusMask = 0;
 static uint8_t _statusCounter = 0;
 static uint16_t _statusBreathe = 0;
-static uint16_t _deviceID_EEPROM EEMEM = 0xFFFF;
-volatile uint16_t _deviceID = 0xFFFF;
 const uint8_t moduloBroadcastAddress = 9;
 
 #define BroadcastCommandGlobalReset 0
@@ -40,27 +33,6 @@ const uint8_t moduloBroadcastAddress = 9;
 #define BroadcastCommandGetEvent 10
 #define BroadcastCommandSetStatusLED 11
 #define BroadcastCommandClearEvent 12
-
-
-uint16_t ModuloGetDeviceID() {
-	// If _deviceID has been initialized, return it
-	if (_deviceID != 0xFFFF) {
-		return _deviceID;
-	}
-	
-	// Load the device ID from EEPROM.
-	_deviceID = eeprom_read_word(&_deviceID_EEPROM);
-	
-	// If nothing was stored in the EEPROM, then generate a random device id.
-	while (_deviceID == 0xFFFF) {
-		uint32_t r = GenerateRandomNumber();
-		_deviceID = r ^ (r >> 16); // xor the low and high words to conserve entropy
-		eeprom_write_word(&_deviceID_EEPROM, _deviceID);
-	}
-	
-	return _deviceID;
-}
-
 
 void ModuloInit(
 	volatile uint8_t *statusDDR,
@@ -135,7 +107,7 @@ static bool _shouldReplyToBroadcastRead = false;
 static uint8_t _eventCode = 0;
 static uint16_t _eventData = 0;
 
-static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t maxLen) {
+static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
 	ModuloWriteBuffer buffer(address, data, len);
 
 	if (!buffer.IsValid()) {
@@ -157,7 +129,7 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t ma
 
             case BroadcastCommandGetNextDeviceID:
                 if (buffer.GetSize() == 2 and
-                    (buffer.Get<uint16_t>(0) <= ModuloGetDeviceID())) {
+                    (buffer.Get<uint16_t>(0) <= GetDeviceID())) {
                     _shouldReplyToBroadcastRead = true;
                     return true;
                 }
@@ -165,7 +137,7 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t ma
 
             case BroadcastCommandSetAddress:
                 if (buffer.GetSize() == 3 and
-                    buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                    buffer.Get<uint16_t>(0) == GetDeviceID()) {
                     TwoWireSetDeviceAddress(buffer.Get<uint8_t>(2));
                     return true;
                 }
@@ -179,13 +151,13 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t ma
             case BroadcastCommandGetProductName:
             case BroadcastCommandGetDocURL:
             case BroadcastCommandGetDocURLContinued:
-                if (buffer.GetSize() == 2 and buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                if (buffer.GetSize() == 2 and buffer.Get<uint16_t>(0) == GetDeviceID()) {
                         _shouldReplyToBroadcastRead = true;
                         return true;
                 }
                 break;
             case BroadcastCommandSetStatusLED:
-                if (buffer.GetSize() == 3 and buffer.Get<uint16_t>(0) == ModuloGetDeviceID()) {
+                if (buffer.GetSize() == 3 and buffer.Get<uint16_t>(0) == GetDeviceID()) {
                     ModuloSetStatus((ModuloStatus)buffer.Get<uint8_t>(2));
                     return true;
                 }
@@ -197,7 +169,7 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t ma
 				}
                 break;
 			case BroadcastCommandClearEvent:
-                if (buffer.GetSize() == 5 and buffer.Get<uint16_t>(1) == ModuloGetDeviceID()) {
+                if (buffer.GetSize() == 5 and buffer.Get<uint16_t>(1) == GetDeviceID()) {
 					ModuloClearEvent(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(3));
                     return true;
                 }
@@ -209,7 +181,7 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len, uint8_t ma
     return ModuloWrite(buffer);
 }
 
-static bool _ReadCallback(uint8_t address, uint8_t command, ModuloReadBuffer *readBuffer) {
+static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *readBuffer) {
     if (address== moduloBroadcastAddress) {
         if (!_shouldReplyToBroadcastRead) {
             return false;
@@ -219,7 +191,7 @@ static bool _ReadCallback(uint8_t address, uint8_t command, ModuloReadBuffer *re
                 {
                     // We have to return the deviceID in big endian order, so that if a collision occurs
                     // the smallest value will win.
-                    uint16_t deviceID = ModuloGetDeviceID();
+                    uint16_t deviceID = GetDeviceID();
                     deviceID = (deviceID << 8) | (deviceID >> 8);
                     readBuffer->AppendValue<uint16_t>(deviceID);
                     return true;
@@ -250,7 +222,7 @@ static bool _ReadCallback(uint8_t address, uint8_t command, ModuloReadBuffer *re
                 return true;
             case BroadcastCommandGetEvent:
 				readBuffer->AppendValue<uint8_t>(_eventCode);
-				readBuffer->AppendValue<uint16_t>(ModuloGetDeviceID());
+				readBuffer->AppendValue<uint16_t>(GetDeviceID());
 				readBuffer->AppendValue<uint16_t>(_eventData);
                 return true;
         }
@@ -265,12 +237,12 @@ int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLe
 	
 	
 	uint8_t command = buffer[0];		
-	_ModuloWrite(address, buffer, len, maxLen);
+	_ModuloWrite(address, buffer, len);
 
 	// Now generate data to send. Note that this overwrites the received data, so
 	// don't try to access moduloWriteBuffer past this point.
 	ModuloReadBuffer moduloReadBuffer(address, buffer, maxLen);
-	if (!_ReadCallback(address, command, &moduloReadBuffer)) {
+	if (!_ModuloRead(address, command, &moduloReadBuffer)) {
 		// Nothing to send back.
 		return 0;
 	}
