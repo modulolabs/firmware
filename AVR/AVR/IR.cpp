@@ -15,7 +15,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#include "IR3.h"
+#include "IR.h"
 
 #define USECPERTICK 50  // microseconds per clock interrupt tick
 

@@ -23,9 +23,9 @@
 
 .DS_Store
 
-Debug
-Release
+AVR/Debug
+AVR/Release
 
-ARM/DEBUG
+ARM/Debug
 ARM/Release
 

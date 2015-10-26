@@ -8,14 +8,14 @@
 
 #include "Config.h"
 
-#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR3)
+#if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR)
 
 #include <avr/io.h>
 #include "Modulo.h"
 #include "Clock.h"
 #include "ADC.h"
 #include <util/delay.h>
-#include "IR3/IR3.h"
+#include "IR.h"
 #include "TwoWire.h"
 
 

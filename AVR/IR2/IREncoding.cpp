@@ -5,7 +5,7 @@
  *  Author: ekt
  */
 
-#include "../Config.h"
+#include "Config.h"
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_IR2)
 
 #include "IREncoding.h"
