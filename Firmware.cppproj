@@ -156,6 +156,8 @@
         <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
       </AvrGccCpp>
     </ToolchainSettings>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ADC.cpp">
@@ -166,6 +168,8 @@
     </Compile>
     <Compile Include="Buffer.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="Buffer.h">
       <SubType>compile</SubType>
@@ -206,7 +210,16 @@
     <Compile Include="IR2\IREncoding.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="IR3\IR3.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="IR3\IR3.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Modules\IR2Module.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Modules\IR3Module.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Modules\TempProbe.cpp">
@@ -264,8 +277,7 @@
     </Compile>
     <Compile Include="Modulo.cpp">
       <SubType>compile</SubType>
-      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
-      </CustomCompilationSetting>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-O0</CustomCompilationSetting>
     </Compile>
     <Compile Include="Modulo.h">
       <SubType>compile</SubType>
@@ -290,6 +302,7 @@
     <Folder Include="IR2\" />
     <Folder Include="Modules" />
     <Folder Include="IRremote" />
+    <Folder Include="IR3" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

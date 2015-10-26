@@ -25,8 +25,9 @@
 #define MODULE_TYPE_IR 6
 #define MODULE_TYPE_TEMP_PROBE 7
 #define MODULE_TYPE_IR2 8
+#define MODULE_TYPE_IR3 9
 
-#define MODULE_TYPE MODULE_TYPE_JOYSTICK
+#define MODULE_TYPE MODULE_TYPE_IR3
 
 #ifndef MODULE_TYPE
 #error No module type defined
