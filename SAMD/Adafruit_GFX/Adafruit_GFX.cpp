@@ -177,42 +177,59 @@ void Adafruit_GFX::fillCircleHelper(int16_t x0, int16_t y0, int16_t r,
 void Adafruit_GFX::drawLine(int16_t x0, int16_t y0,
 			    int16_t x1, int16_t y1,
 			    uint16_t color) {
-  int16_t steep = abs(y1 - y0) > abs(x1 - x0);
-  if (steep) {
-    swap(x0, y0);
-    swap(x1, y1);
-  }
+	int16_t steep = abs(y1 - y0) > abs(x1 - x0);
+	if (steep) {
+		swap(x0, y0);
+		swap(x1, y1);
+	}
 
-  if (x0 > x1) {
-    swap(x0, x1);
-    swap(y0, y1);
-  }
+	if (x0 > x1) {
+		swap(x0, x1);
+		swap(y0, y1);
+	}
 
-  int16_t dx, dy;
-  dx = x1 - x0;
-  dy = abs(y1 - y0);
+	int16_t dx, dy;
+	dx = x1 - x0;
+	dy = abs(y1 - y0);
 
-  int16_t err = dx / 2;
-  int16_t ystep;
+	int16_t err = dx / 2;
+	int16_t ystep;
 
-  if (y0 < y1) {
-    ystep = 1;
-  } else {
-    ystep = -1;
-  }
+	if (y0 < y1) {
+		ystep = 1;
+	} else {
+		ystep = -1;
+	}
 
-  for (; x0<=x1; x0++) {
-    if (steep) {
-      drawPixel(y0, x0, color);
-    } else {
-      drawPixel(x0, y0, color);
-    }
-    err -= dy;
-    if (err < 0) {
-      y0 += ystep;
-      err += dx;
-    }
-  }
+	if (steep) {
+		x0 = (x0 < 0) ? 0 : x0;
+		x1 = (x1 >= HEIGHT) ? HEIGHT-1 : x1;
+		
+		for (; x0 <= x1; x0++) {
+			 if (y0 >= 0 and y0 < WIDTH) {
+				drawPixelNoCheck(y0, x0, color);
+			}
+			err -= dy;
+			if (err < 0) {
+				y0 += ystep;
+				err += dx;
+			}
+		}
+	} else {
+		x0 = (x0 < 0) ? 0 : x0;
+		x1 = (x1 >= WIDTH) ? WIDTH-1 : x1;
+		
+		for (; x0 <= x1; x0++) {
+			 if (y0 >= 0 and y0 < HEIGHT) {
+				drawPixelNoCheck(x0, y0, color);
+			}
+			err -= dy;
+			if (err < 0) {
+				y0 += ystep;
+				err += dx;
+			}
+		}
+	}
 }
 
 // Draw a rectangle

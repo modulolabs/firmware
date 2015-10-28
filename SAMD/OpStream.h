@@ -37,7 +37,15 @@ public:
 	
 	void ProcessOp();
 	
+	// Returns true if the stream is empty, even if the last op is still
+	// being executed.
+	bool IsEmpty();
+	
+	// Returns true if the stream is empty AND the last op has been executed.
 	bool IsComplete();
+	
+	// Return the number of bytes available for writing in the stream
+	uint16_t GetAvailableSpace();
 	
 private:
 
@@ -45,14 +53,14 @@ private:
 	template <class T>
 	T _Read() {
 		T retval = T();
-		if (_readPos+sizeof(T) >= STREAM_SIZE) {
-			return retval;
+		for (int i=0; i < sizeof(T); i++) {
+			((uint8_t*)&retval)[i] = _ReadByte();
 		}
-		memcpy(&retval, _data+_readPos, sizeof(T));
-		_readPos += sizeof(T);
 		return retval;
 	}
-
+	
+	uint8_t _ReadByte();
+	
 	Adafruit_GFX *_display;
 	Color _lineColor;
 	Color _fillColor;
@@ -63,6 +71,7 @@ private:
 	
 	static const uint16_t STREAM_SIZE  = 1024;
 	uint8_t _data[STREAM_SIZE];
+	volatile uint16_t _size;
 	volatile uint16_t _writePos;
 	volatile uint16_t _readPos;
 	volatile bool _complete;

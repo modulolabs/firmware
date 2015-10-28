@@ -23,8 +23,14 @@ const char *ModuloDocURL = "modulo.co/docs/ColorDisplay";
 #define FUNCTION_APPEND_OP 0
 #define FUNCTION_IS_COMPLETE 1
 #define FUNCTION_GET_BUTTONS 2
+#define FUNCTION_RAW_WRITE 3
+#define FUNCTION_IS_EMPTY 4
+#define FUNCTION_GET_AVAILABLE_SPACE 5
 
 volatile uint8_t buttons = 0;
+volatile uint8_t buttonsPressed = 0;
+volatile uint8_t buttonsReleased = 0;
+
 Adafruit_GFX display;
 OpStream stream(&display);
 
@@ -36,8 +42,22 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 			return true;
 		case FUNCTION_IS_COMPLETE:
 			return true;
+		case FUNCTION_IS_EMPTY:
+			return true;
 		case FUNCTION_GET_BUTTONS:
 			return buffer.GetSize() == 0;
+		case FUNCTION_RAW_WRITE:
+			if (buffer.GetSize() <= 1) {
+				return false;
+			}
+			
+			for (int i=1; i < buffer.GetSize(); i++) {
+				SSD1331RawWrite(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(i));
+			}
+			return true;
+		case FUNCTION_GET_AVAILABLE_SPACE:
+			return true;
+			
 	}
 	return false;
 }
@@ -47,18 +67,37 @@ bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
 		case FUNCTION_IS_COMPLETE:
 			buffer->AppendValue(stream.IsComplete());
 			return true;
+		case FUNCTION_IS_EMPTY:
+			buffer->AppendValue(stream.IsComplete());
+			return true;
 		case FUNCTION_GET_BUTTONS:
 			buffer->AppendValue<uint8_t>((uint8_t)buttons);
+			return true;
+		case FUNCTION_GET_AVAILABLE_SPACE:
+			buffer->AppendValue<uint16_t>(stream.GetAvailableSpace());
 			return true;
 	}
 	return false;
 }
 
+
+#define EVENT_CODE_BUTTONS 0
+
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	if (buttonsPressed or buttonsReleased) {
+		*eventCode = EVENT_CODE_BUTTONS;
+		*eventData = (buttonsPressed << 8) | buttonsReleased;
+		return true;
+	}
 	return false;
 }
 
-void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {	
+void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+	uint16_t expectedData = (buttonsPressed << 8) | buttonsReleased;
+	if (eventCode == EVENT_CODE_BUTTONS and eventData == expectedData) {
+		buttonsPressed = 0;
+		buttonsReleased = 0;
+	}
 }
 
 void ModuloReset() {
@@ -133,10 +172,24 @@ int main (void)
 	while (1) {
 		stream.ProcessOp();
 		
+		
 		bool button1 = !port_pin_get_input_level(BUTTON_1_PIN);
 		bool button2 = !port_pin_get_input_level(BUTTON_2_PIN);
 		bool button3 = !port_pin_get_input_level(BUTTON_3_PIN);
 		
-		buttons = (button3 << 2) | (button2 << 1) | button1;
+		uint8_t newButtons = (button3 << 2) | (button2 << 1) | button1;
+		
+		for (int i=0; i < 3; i++) {
+			uint8_t mask = (1 << i);
+			if ((newButtons & mask) != (buttons & mask)) {
+				if (newButtons & mask) {
+					buttons |= mask;
+					buttonsPressed |= mask;
+				} else {
+					buttons &= ~mask;
+					buttonsReleased |= mask;
+				}
+			}
+		}
 	}
 }

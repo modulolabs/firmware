@@ -14,9 +14,10 @@ bool ModuloHandleDataRequested(uint8_t address, uint8_t *data);
 bool ModuloHandleDataReceived(uint8_t address, uint8_t *data);
 
 #define DATA_LENGTH 32
-uint8_t read_buffer[DATA_LENGTH] = {0x1, 0x2, 0x03};
-uint8_t write_buffer[DATA_LENGTH] = {7,8,9,10};
+uint8_t read_buffer[DATA_LENGTH] = {};
+uint8_t write_buffer[DATA_LENGTH] = {};
 volatile uint8_t addr;
+static const uint8_t broadcastAddress = 9;
 
 struct i2c_slave_module i2c_slave_instance;
 enum i2c_slave_direction dir;
@@ -38,7 +39,7 @@ void i2c_read_request_callback(struct i2c_slave_module *module)
 	SercomI2cs *const i2c_hw = &(module->hw->I2CS);
 	addr = i2c_hw->DATA.reg >> 1;
 	
-	if ((addr == 9 or addr == deviceAddress) and isReadValid) {
+	if ((addr == broadcastAddress or addr == deviceAddress) and isReadValid) {
 		packet.data_length = DATA_LENGTH;
 	}
 	
@@ -70,7 +71,7 @@ void i2c_write_request_callback(struct i2c_slave_module *const module)
 	addr = i2c_hw->DATA.reg >> 1;
 	asm("nop");
 	
-	if (addr == 9 or addr == deviceAddress) {
+	if (addr == broadcastAddress or addr == deviceAddress) {
 		packet.data_length = DATA_LENGTH;
 	} else {
 		packet.data_length = 0;
@@ -90,7 +91,7 @@ void i2c_write_complete_callback(struct i2c_slave_module *const module) {
 void TwoWireInit(bool useInterrupts) {
 	struct i2c_slave_config config_i2c_slave;
 	i2c_slave_get_config_defaults(&config_i2c_slave);
-	config_i2c_slave.address = 0x09;
+	config_i2c_slave.address = broadcastAddress;
 	config_i2c_slave.address_mask = 0xFF;
 	config_i2c_slave.address_mode = I2C_SLAVE_ADDRESS_MODE_MASK;
 	config_i2c_slave.pinmux_pad0 = PINMUX_PA22C_SERCOM3_PAD0;

@@ -22,17 +22,19 @@ class Adafruit_GFX {
 
  public:
 
-	
+	Adafruit_GFX(); // Constructor
 
-  Adafruit_GFX(); // Constructor
-
-  inline void drawPixel(int16_t x, int16_t y, uint16_t color) {
-	if (x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT) {
-		return;
+	inline void drawPixelNoCheck(int16_t x, int16_t y, uint16_t color) {
+		_pixels[x+y*WIDTH] = color;
 	}
-	
-	_pixels[x+y*WIDTH] = color;
-}
+
+	inline void drawPixel(int16_t x, int16_t y, uint16_t color) {
+
+		if (x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT) {
+			return;
+		}
+		drawPixelNoCheck(x, y, color);
+	}
 
 	uint8_t *getData() const {
 		return (uint8_t*)_pixels;

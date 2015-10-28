@@ -223,3 +223,11 @@ void SSD1331Init() {
     _writeByte(SSD1331_CMD_DISPLAYON);	//--turn on oled panel
 }
 
+void SSD1331RawWrite(bool dataMode, uint8_t x) {
+	if (dataMode) {
+		_setDataMode();
+	} else {
+		_setCommandMode();
+	}
+	_writeByte(x);
+}
