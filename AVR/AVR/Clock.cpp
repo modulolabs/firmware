@@ -11,90 +11,43 @@
 #include "Clock.h"
 
 static volatile unsigned long timer0_overflow_count = 0;
-static volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
 
 void ClockInit()
 {
-    TIMSK0 |= _BV(TOIE0); // Enable the Timer0 overflow interrupt
-
-#if defined(CPU_TINYX8)
-    TCCR0A |= _BV(CS01) | _BV(CS00); // Enable clock with 64x prescaler
-#elif  defined (CPU_TINYX41)
-    TCCR0B |= _BV(CS01) | _BV(CS00); // Enable clock with 64x prescaler
-#else
-    #error "No implementation of ClockInit() for current CPU"
-#endif
-
+	// Enable the Timer0 overflow interrupt
+    TIMSK0 |= _BV(TOIE0);
 	
-    sei();
+	// Enable clock with 64x prescaler
+    TCCR0B |= _BV(CS01) | _BV(CS00); 
+    
+	// Ensure that interrupts are enabled
+	sei();
 }
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
-
-// the whole number of milliseconds per timer0 overflow
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
-#define FRACT_MAX (1000 >> 3)
+//
+// At 8Mhz, MICROSECONDS_PER_TICK is 8.
+#define MICROSECONDS_PER_TICK (clockCyclesToMicroseconds(64))
 
 unsigned long micros() {
-    unsigned long m;
-    uint8_t oldSREG = SREG, t;
-	
+	// If TCNT0 overflows after disabling interrupts but before reading its value,
+	// then the time will be up to 256 ticks off. Not sure how to fix that.
     cli();
-    m = timer0_overflow_count;
-#if defined(TCNT0)
-    t = TCNT0;
-#elif defined(TCNT0L)
-    t = TCNT0L;
-#else
-#error TIMER 0 not defined
-#endif
-
+	unsigned long ticks = TCNT0;
+	unsigned long overflows = timer0_overflow_count;
+	sei();
 	
-#ifdef TIFR0
-    if ((TIFR0 & _BV(TOV0)) && (t < 255))
-	m++;
-#else
-    if ((TIFR & _BV(TOV0)) && (t < 255))
-	m++;
-#endif
-
-    SREG = oldSREG;
-	
-    return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+	return (overflows*256 + ticks)*MICROSECONDS_PER_TICK;
 }
 
 unsigned long millis() {
     return micros()/1000;
 }
 
-#if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-ISR(TIM0_OVF_vect)
-#else
 ISR(TIMER0_OVF_vect)
-#endif
 {
-    // copy these to local variables so they can be stored in registers
-    // (volatile variables must be read from memory on every access)
-    unsigned long m = timer0_millis;
-    unsigned char f = timer0_fract;
-
-    m += MILLIS_INC;
-    f += FRACT_INC;
-    if (f >= FRACT_MAX) {
-        f -= FRACT_MAX;
-        m += 1;
-    }
-
-    timer0_fract = f;
-    timer0_millis = m;
     timer0_overflow_count++;
-	
-    ModuloUpdateStatusLED();
 }
 
 /// Copied from Arduino
