@@ -251,24 +251,6 @@
     <Compile Include="AVR\TwoWire841.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <None Include="IR2\IR2.cpp">
-      <SubType>compile</SubType>
-    </None>
-    <Compile Include="IR2\IR2.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <None Include="IR2\IR2Decode.cpp">
-      <SubType>compile</SubType>
-    </None>
-    <None Include="IR2\IR2Send.cpp">
-      <SubType>compile</SubType>
-    </None>
-    <None Include="IR2\IREncoding.cpp">
-      <SubType>compile</SubType>
-    </None>
-    <Compile Include="IR2\IREncoding.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="Modules\BlankSlateModule.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -294,7 +276,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="IR2\" />
     <Folder Include="Modules\" />
     <Folder Include="Common" />
     <Folder Include="AVR" />
