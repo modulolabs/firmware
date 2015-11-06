@@ -170,13 +170,13 @@ int main(void)
 	ClockInit();
 	
 	ModuloInit(&STATUS_DDR, &STATUS_PORT, _BV(STATUS_LED_PIN),
-		true /*useTwoWireInterupt*/);
+		false /*useTwoWireInterupt*/);
 
 	IRInit();
 
 	while(1)
 	{
-		//TwoWireUpdate();
+		TwoWireUpdate();
 
 		if (sendLen) {
 			cli();
