@@ -47,7 +47,7 @@ void ModuloInit(
 		*_statusDDR |= _statusMask;
 	}
 	
-	TwoWireInit(useTwoWireInterrupt);
+	TwoWireInit(moduloBroadcastAddress, useTwoWireInterrupt);
 	TwoWireSetDeviceAddress(0);
 
 	// Ensure that we have a valid device id

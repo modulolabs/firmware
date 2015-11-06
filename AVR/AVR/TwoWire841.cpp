@@ -7,7 +7,6 @@
 
 #if defined(__AVR_ATtiny841__) || defined(__AVR_ATtiny441__)
 
-#include "Modulo.h"
 #include "Buffer.h"
 #include "TwoWire.h"
 #include "Config.h"
@@ -21,7 +20,7 @@ static volatile uint8_t _deviceAddress = 0;
 #endif
 
 
-void TwoWireInit(bool useInterrupts) {
+void TwoWireInit(uint8_t broadcastAddress, bool useInterrupts) {
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
 	TWSCRA = _BV(TWEN) | _BV(TWSIE);
 	
@@ -31,14 +30,13 @@ void TwoWireInit(bool useInterrupts) {
 	
 	TWSCRB = _BV(TWHNM);
 
-	// Also listen for message on the broadcast address
-	TWSAM = (moduloBroadcastAddress << 1)| 1;
+	// Listen for message on the broadcast address
+	TWSAM = (broadcastAddress << 1)| 1;
 }
 
 void TwoWireSetDeviceAddress(uint8_t address) {
 	_deviceAddress = address;
 	TWSA = (address << 1);
-	ModuloSetStatus(ModuloStatusOff);
 }
 
 uint8_t TwoWireGetDeviceAddress() {
@@ -78,7 +76,7 @@ void TwoWireUpdate() {
 	bool isAddressOrStop = (status & _BV(TWASIF)); // Get the TWI Address/Stop Interrupt Flag
 	bool isReadOperation = (status & _BV(TWDIR));
 	bool addressReceived = (status & _BV(TWAS)); // Check if we received an address and not a stop
-	
+		
 	// Clear the interrupt flags
 	// TWSSRA |= _BV(TWDIF) | _BV(TWASIF);
 	
@@ -89,6 +87,13 @@ void TwoWireUpdate() {
 	
 	// Handle address received and stop conditions
 	if (isAddressOrStop) {
+		// We must capture the address before acknowledging and releasing the clock hold,
+		// since otherwise the next byte could arrive before we read TWSD. (particularly
+		// in polled mode when another interrupt occurs)
+		//
+		// The address is in the high 7 bits, the RD/WR bit is in the lsb
+		uint8_t newAddress = TWSD >> 1;
+		
 		// Send an ack unless a read is starting and there are no bytes to read.
 		bool ack = (twiBufferLen > 0) or (!isReadOperation) or (!addressReceived);
 		_Acknowledge(ack, !addressReceived /*complete*/);
@@ -108,10 +113,9 @@ void TwoWireUpdate() {
 			twiBufferLen = 0;
 		}
 		
-		// The address is in the high 7 bits, the RD/WR bit is in the lsb
-		twiAddress = TWSD >> 1;
+		twiAddress = newAddress;	
 	}
-
+	
 	// Data Read
 	if (dataInterruptFlag and isReadOperation) {
 		if (twiReadPos < twiBufferLen) {
@@ -132,7 +136,6 @@ void TwoWireUpdate() {
 			twiBuffer[twiBufferLen++] = data;
 		}
 	}
-
 }
 
 // The two wire interrupt service routine

@@ -11,7 +11,7 @@
 
 #include <inttypes.h>
 
-void TwoWireInit(bool useInterrupts = true);
+void TwoWireInit(uint8_t broadcastAddress, bool useInterrupts = true);
 void TwoWireSetDeviceAddress(uint8_t address);
 uint8_t TwoWireGetDeviceAddress();
 
