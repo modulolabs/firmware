@@ -46,6 +46,9 @@ uint8_t nextReadOffset = 0;
 uint8_t nextReadLen = 0;
 
 int count = 0;
+
+bool receiveEvent = false;
+
 bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
 	switch (command) {
 		case FUNCTION_RECEIVE:
@@ -113,12 +116,21 @@ void ModuloReset() {
 	IRSetBreakLength(512);
 }
 
+#define EVENT_CODE_RECEIVE 0
+
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	if (receiveEvent) {
+		*eventCode = EVENT_CODE_RECEIVE;
+		*eventData = receivedLen;
+		return true;
+	}
 	return false;
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
-
+	if (eventCode == EVENT_CODE_RECEIVE and eventData == receivedLen) {
+		receiveEvent = false;
+	}
 }
 
 void onIRReadComplete(uint8_t *data, uint8_t len) {
@@ -128,6 +140,7 @@ void onIRReadComplete(uint8_t *data, uint8_t len) {
 	}
 	
 	receivedLen = len;
+	receiveEvent = true;
 	for (int i=0; i < len; i++) {
 		receivedData[i] = data[i];
 	}
