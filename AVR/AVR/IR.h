@@ -1,5 +1,5 @@
 /*
- * IR3.h
+ * IR.h
  *
  * Created: 10/21/2015 2:30:59 PM
  *  Author: ekt
@@ -9,11 +9,6 @@
 #ifndef IR3_H_
 #define IR3_H_
 
-void IR3ReceiveEnable();
-void IR3ReceiveDisable();
-
-bool IR3IsReceiveComplete();
-uint8_t IR3Receive(uint8_t *buffer, uint8_t maxLen);
 
 #define IR_BUFFER_SIZE 96
 
@@ -21,57 +16,23 @@ uint8_t IR3Receive(uint8_t *buffer, uint8_t maxLen);
 #define IR_TOKEN_END 254
 #define IR_TOKEN_START 255
 
-#if 0
-template <class T, int SIZE>
-class RingBuffer {
-	public:
-	RingBuffer() : _size(0), _readIndex(0), _writeIndex(0) {}
-		
-	bool push(uint8_t b) {
-		if (_size == SIZE) {
-			return false;
-		}
-		data[_writeIndex] = b;
-		_writeIndex = (_writeIndex+1) % SIZE;
-		_size++;
-		return true;
-	}
+void IRInit();
 
-	uint8_t pop() {
-		if (_size == 0) {
-			return false;
-		}
-		uint8_t b = data[_readIndex];
-		_readIndex = (_readIndex+1) % SIZE;
-		_size--;
-		return b;
-	}
-	
-	bool isEmpty() {
-		return _size == 0;
-	}
-	
-	bool isFull() {
-		return _size == SIZE;
-	}
-	
-	uint8_t peek() {
-		return data[_readIndex];
-	}
-	
-	uint8_t getSize() {
-		return _size;
-	}
-	
-	private:
-	T data[SIZE];
-	volatile uint16_t _size;
-	volatile uint16_t _readIndex;
-	volatile uint16_t _writeIndex;
-	
-};
+// Return whether IR is idle and therefore ready to send.
+// It's idle when not sending or receiving and no signal has
+// been seen for a minimum amount of time.
+bool IRIsIdle();
 
-extern RingBuffer<uint8_t, 256> irRingBuffer;
-#endif
+// Send IR data. This copies the data to the send buffer and returns,
+// so the transmission will begin on the next timer interrupt. 
+void IRSend(uint8_t *data, uint8_t len);
 
-#endif /* IR3_H_ */
+// Return true if there is currently a signal begin sent or detected
+// Use to flash the status led during activity.
+bool IRGetActivity();
+
+
+// Set the minimum amount of time (in 50us ticks) between transmissions
+void IRSetBreakLength(uint16_t len);
+
+#endif /* IR_H_ */

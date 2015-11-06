@@ -47,7 +47,7 @@ enum IRState {
 static volatile IRState _state = READY;
 
 
-static const uint16_t IR_BREAK_LENGTH=512; // Maximum number of tickets for SPACE before ending
+static const uint16_t _irBreakLength=512; // Maximum number of tickets for SPACE before ending
 
 // Length of the current mark or space
 static volatile uint16_t _currentCount = 0;
@@ -165,7 +165,7 @@ ISR(TIMER2_COMPA_vect)
 			
 			// If the space is longer than IR_BREAK_LENGTH, the read
 			// is complete. Set a flag and return to the READY state.
-			if (_currentCount > IR_BREAK_LENGTH) {
+			if (_currentCount > _irBreakLength) {
 				_readComplete = true;
 				_state = READY;
 			}
