@@ -20,10 +20,7 @@ struct ModuloInfo {
 };
 
 #define DECLARE_MODULO(moduloType, moduloVersion) \
-	ModuloInfo moduloInfo __attribute__((section(".moduloInfo"))) = {.id=1, .version=moduloVersion, moduloType};
-
-
-
+	ModuloInfo moduloInfo __attribute__((section(".moduloInfo"))) = {.id=0xFFFF, .version=moduloVersion, moduloType};
 
 
 

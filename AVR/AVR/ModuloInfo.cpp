@@ -6,6 +6,7 @@
  */ 
 
 #include "ModuloInfo.h"
+#include "Random.h"
 #include <avr/eeprom.h>
 
 // The top of EEPROM is reserved for metadata about the modulo.
@@ -23,8 +24,18 @@ uint16_t GetDeviceID() {
 	// If _deviceID has been not been initialized, load it from the EEPROM
 	if (_moduloID == 0xFFFF) {
 		// Load the device ID from EEPROM.
+		volatile uint16_t * volatile addr = &moduloInfo.id;
+		
 		_moduloID = eeprom_read_word(&moduloInfo.id);
+
+		if (_moduloID == 0xFFFF) {
+			uint32_t r = GenerateRandomNumber();
+			_moduloID = r ^ (r >> 16); // xor the low and high words to conserve entropy
+			eeprom_write_word(&moduloInfo.id, _moduloID);
+		}
+
 	}
+	
 	
 	return _moduloID;
 }
