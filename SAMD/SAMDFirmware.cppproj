@@ -599,7 +599,7 @@
     <Compile Include="Adafruit_GFX\glcdfont.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="DeviceID.cpp">
+    <Compile Include="ModuloInfo.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="OpStream.cpp">

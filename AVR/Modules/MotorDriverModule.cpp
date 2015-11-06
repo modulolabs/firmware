@@ -17,13 +17,9 @@
 #include "Modulo.h"
 #include "PWM.h"
 #include "Clock.h"
+#include "ModuloInfo.h"
 
-
-const char *ModuloDeviceType = "co.modulo.motor";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Motor";
-const char *ModuloDocURL = "modulo.co/docs/motor";
+DECLARE_MODULO("co.modulo.motor", 1);
 
 enum FunctionCode {
 	FunctionSetValue,
@@ -318,6 +314,7 @@ int main(void)
 #endif
 	
 	while(1) {
+		ModuloUpdateStatusLED();
 	}
 }
 

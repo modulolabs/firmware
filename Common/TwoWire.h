@@ -15,6 +15,8 @@ void TwoWireInit(bool useInterrupts = true);
 void TwoWireSetDeviceAddress(uint8_t address);
 uint8_t TwoWireGetDeviceAddress();
 
+// When not using interrupts, call TwoWireUpdate periodically.
+void TwoWireUpdate();
 
 int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLen);
 

@@ -23,10 +23,10 @@ static volatile uint8_t _deviceAddress = 0;
 
 void TwoWireInit(bool useInterrupts) {
 	// Enable Data Interrupt, Address/Stop Interrupt, Two-Wire Interface, Stop Interrpt
-	TWSCRA = _BV(TWEN);
+	TWSCRA = _BV(TWEN) | _BV(TWSIE);
 	
 	if (useInterrupts) {
-		TWSCRA |= _BV(TWDIE) | _BV(TWASIE) | _BV(TWSIE);
+		TWSCRA |= _BV(TWDIE) | _BV(TWASIE) ;
 	}
 	
 	TWSCRB = _BV(TWHNM);
@@ -79,6 +79,8 @@ void TwoWireUpdate() {
 	bool isReadOperation = (status & _BV(TWDIR));
 	bool addressReceived = (status & _BV(TWAS)); // Check if we received an address and not a stop
 	
+	// Clear the interrupt flags
+	// TWSSRA |= _BV(TWDIF) | _BV(TWASIF);
 	
 	//volatile bool clockHold = (TWSSRA & _BV(TWCH));
 	//volatile bool receiveAck = (TWSSRA & _BV(TWRA));

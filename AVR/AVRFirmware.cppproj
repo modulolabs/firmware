@@ -108,55 +108,62 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>
       <AvrGccCpp>
-  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
-  <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
-  <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
-  <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
-  <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
-  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-  <avrgcc.compiler.symbols.DefSymbols>
-    <ListValues>
-      <Value>DEBUG</Value>
-    </ListValues>
-  </avrgcc.compiler.symbols.DefSymbols>
-  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-  <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
-  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-  <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
-  <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
-  <avrgcccpp.compiler.symbols.DefSymbols>
-    <ListValues>
-      <Value>DEBUG</Value>
-    </ListValues>
-  </avrgcccpp.compiler.symbols.DefSymbols>
-  <avrgcccpp.compiler.directories.IncludePaths>
-    <ListValues>
-      <Value>..</Value>
-      <Value>../../Common</Value>
-      <Value>../AVR</Value>
-    </ListValues>
-  </avrgcccpp.compiler.directories.IncludePaths>
-  <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
-  <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
-  <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
-  <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
-  <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
-  <avrgcccpp.linker.libraries.Libraries>
-    <ListValues>
-      <Value>libm</Value>
-    </ListValues>
-  </avrgcccpp.linker.libraries.Libraries>
-  <avrgcccpp.linker.memorysettings.Eeprom>
-    <ListValues>
-      <Value>.eeprom=0x0</Value>
-    </ListValues>
-  </avrgcccpp.linker.memorysettings.Eeprom>
-  <avrgcccpp.linker.miscellaneous.LinkerFlags>-Wl,--cref</avrgcccpp.linker.miscellaneous.LinkerFlags>
-  <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
-</AvrGccCpp>
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcc.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>DEBUG</Value>
+          </ListValues>
+        </avrgcc.compiler.symbols.DefSymbols>
+        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
+        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+        <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcccpp.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>DEBUG</Value>
+          </ListValues>
+        </avrgcccpp.compiler.symbols.DefSymbols>
+        <avrgcccpp.compiler.directories.IncludePaths>
+          <ListValues>
+            <Value>..</Value>
+            <Value>../../Common</Value>
+            <Value>../AVR</Value>
+          </ListValues>
+        </avrgcccpp.compiler.directories.IncludePaths>
+        <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
+        <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
+        <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
+        <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
+        <avrgcccpp.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </avrgcccpp.linker.libraries.Libraries>
+        <avrgcccpp.linker.optimization.GarbageCollectUnusedSections>False</avrgcccpp.linker.optimization.GarbageCollectUnusedSections>
+        <avrgcccpp.linker.memorysettings.Flash>
+          <ListValues>
+            <Value>.trampoline=0xbff</Value>
+          </ListValues>
+        </avrgcccpp.linker.memorysettings.Flash>
+        <avrgcccpp.linker.memorysettings.Eeprom>
+          <ListValues>
+            <Value>.eeprom=0x0</Value>
+            <Value>.moduloInfo=0x1dc</Value>
+          </ListValues>
+        </avrgcccpp.linker.memorysettings.Eeprom>
+        <avrgcccpp.linker.miscellaneous.LinkerFlags>-Wl,--cref</avrgcccpp.linker.miscellaneous.LinkerFlags>
+        <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
+      </AvrGccCpp>
     </ToolchainSettings>
     <PostBuildEvent>
     </PostBuildEvent>
@@ -205,7 +212,7 @@
     <Compile Include="AVR\Config.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="AVR\DeviceID.cpp">
+    <Compile Include="AVR\ModuloInfo.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\Fuses.c">
@@ -223,6 +230,9 @@
     <Compile Include="AVR\IR.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="AVR\ModuloInfo.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="AVR\PWM.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -235,24 +245,27 @@
     <Compile Include="AVR\Random.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="AVR\Trampoline.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="AVR\TwoWire841.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="IR2\IR2.cpp">
+    <None Include="IR2\IR2.cpp">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="IR2\IR2.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="IR2\IR2Decode.cpp">
+    <None Include="IR2\IR2Decode.cpp">
       <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="IR2\IR2Send.cpp">
+    </None>
+    <None Include="IR2\IR2Send.cpp">
       <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="IR2\IREncoding.cpp">
+    </None>
+    <None Include="IR2\IREncoding.cpp">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="IR2\IREncoding.h">
       <SubType>compile</SubType>
     </Compile>
@@ -261,6 +274,8 @@
     </Compile>
     <Compile Include="Modules\IRModule.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="Modules\JoystickModule.cpp">
       <SubType>compile</SubType>

@@ -9,20 +9,19 @@
 
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_TEMP_PROBE)
 
-#include <avr/io.h>
 #include "Modulo.h"
 #include "Clock.h"
 #include "ADC.h"
+#include "ModuloInfo.h"
+
+#include <avr/io.h>
 #include <util/delay.h>
 #include <math.h>
 
+DECLARE_MODULO("co.modulo.tempprobe", 1);
+
 volatile uint16_t temperature = 0;
 
-const char *ModuloDeviceType = "co.modulo.tempprobe";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Temperature Probe";
-const char *ModuloDocURL = "modulo.co/docs/tempprobe";
 
 #define FUNCTION_GET_TEMPERATURE 0
 
@@ -139,6 +138,8 @@ int main(void)
 		
 		// Rate limit the updates
 		_delay_ms(5);
+		
+		ModuloUpdateStatusLED();
 	}
 }
 

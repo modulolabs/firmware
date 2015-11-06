@@ -9,12 +9,10 @@
 #include "Clock.h"
 #include "PWM.h"
 #include "Modulo.h"
+#include "ModuloInfo.h"
 
-const char *ModuloDeviceType = "co.modulo.io";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "IO Module";
-const char *ModuloDocURL = "modulo.co/docs/io";
+DECLARE_MODULO("co.modulo.io", 1);
+
 
 /*
 GPIO 0 - PB2 - PCINT10 - ADC8 - TOCC7
@@ -437,6 +435,7 @@ int main(void)
             ModuloSetStatus(ModuloStatusOff);
         }
 */
+		ModuloUpdateStatusLED();
 	}
 }
 

@@ -147,6 +147,8 @@ int main(void)
 
 		asm("nop");
 		_delay_ms(500);
+		
+		ModuloUpdateStatusLED();
 	}
 }
 

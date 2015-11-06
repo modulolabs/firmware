@@ -20,11 +20,11 @@
 #define MODULE_TYPE_UNSET 0
 #define MODULE_TYPE_KNOB 1
 #define MODULE_TYPE_BLANK_SLATE 2
-#define MODULE_TYPE_THERMOCOUPLE 3
-#define MODULE_TYPE_MOTOR 4
-#define MODULE_TYPE_JOYSTICK 5
-#define MODULE_TYPE_IR 6
-#define MODULE_TYPE_TEMP_PROBE 7
+#define MODULE_TYPE_MOTOR 3
+#define MODULE_TYPE_JOYSTICK 4
+#define MODULE_TYPE_IR 5
+#define MODULE_TYPE_TEMP_PROBE 6
+#define MODULE_TYPE_THERMOCOUPLE 7
 
 // Change MODULE_TYPE to the module you are compiling for
 #define MODULE_TYPE MODULE_TYPE_UNSET
@@ -37,4 +37,4 @@
 #error You must set MODULE_TYPE in Config.h before compiling.
 #endif
 
-#endif /* CONFIG_H_ */
+#endif /* CONFIG_H_ */	

@@ -16,6 +16,9 @@
 #include "PWM.h"
 #include "Clock.h"
 #include "Modulo.h"
+#include "ModuloInfo.h"
+
+DECLARE_MODULO("co.modulo.knob", 1);
 
 /*
   LED - PA7
@@ -186,11 +189,7 @@ private:
     int16_t _position;
 };
 
-const char *ModuloDeviceType = "co.modulo.knob";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Knob";
-const char *ModuloDocURL = "modulo.co/docs/knob";
+
 
 #define FUNCTION_GET_BUTTON  0
 #define FUNCTION_GET_POSITION 1
@@ -252,7 +251,6 @@ void ModuloReset() {
 
 
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
-	asm("nop");
 	if (_buttonPressed or _buttonReleased) {
 		*eventCode = EVENT_BUTTON_CHANGED;
 		*eventData = (_buttonPressed << 8) | _buttonReleased;
@@ -290,8 +288,7 @@ int main(void)
     pwmRed.SetCompareEnabled(true);
     pwmGreen.SetCompareEnabled(true);
     pwmBlue.SetCompareEnabled(true);
-	
-//	_delay_ms(10);
+
 
 	ENC_PUE |= _BV(ENCA_PIN) | _BV(ENCB_PIN);
 	
@@ -322,6 +319,7 @@ int main(void)
         _buttonState = debouncer.Get();
         interrupts();
 
+		ModuloUpdateStatusLED();
 	}
 }
 

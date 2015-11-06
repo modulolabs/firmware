@@ -7,9 +7,13 @@
  
  #include <avr/io.h>
 
- FUSES =
- {
-     0xE2, // .low
-     0xDF, // .high
-     0xFF, // .extended
- };
+// Store the fuse bits in a separate section of the elf file.
+// Note that fuse bits are inverted (0 enables the feature) so we must bitwise
+// and the masks together.
+FUSES =
+{
+	.low = FUSE_SUT_CKSEL4 & FUSE_SUT_CKSEL3 & FUSE_SUT_CKSEL2 & FUSE_SUT_CKSEL0,
+	.high = FUSE_SPIEN & FUSE_EESAVE,
+	.extended = FUSE_SELFPRGEN & FUSE_BODACT0 & FUSE_BODPD0
+};
+

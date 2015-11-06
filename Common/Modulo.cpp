@@ -9,16 +9,8 @@
 #include "Modulo.h"
 #include "TwoWire.h"
 #include "DeviceID.h"
+#include "Clock.h"
 #include <string.h>
-
-
-static ModuloStatus _status;
-static volatile uint8_t *_statusDDR = NULL;
-static volatile uint8_t *_statusPort = NULL;
-static volatile uint8_t _statusMask = 0;
-static uint8_t _statusCounter = 0;
-static uint16_t _statusBreathe = 0;
-const uint8_t moduloBroadcastAddress = 9;
 
 #define BroadcastCommandGlobalReset 0
 #define BroadcastCommandGetNextDeviceID 1
@@ -26,13 +18,20 @@ const uint8_t moduloBroadcastAddress = 9;
 #define BroadcastCommandGetAddress 3
 #define BroadcastCommandGetDeviceType 4
 #define BroadcastCommandGetDeviceVersion 5
-#define BroadcastCommandGetCompanyName 6
-#define BroadcastCommandGetProductName 7
-#define BroadcastCommandGetDocURL 8
-#define BroadcastCommandGetDocURLContinued 9
-#define BroadcastCommandGetEvent 10
-#define BroadcastCommandSetStatusLED 11
-#define BroadcastCommandClearEvent 12
+#define BroadcastCommandGetEvent 6
+#define BroadcastCommandClearEvent 7
+#define BroadcastCommandSetStatusLED 8
+
+static ModuloStatus _status;
+static volatile uint8_t *_statusDDR = NULL;
+static volatile uint8_t *_statusPort = NULL;
+static volatile uint8_t _statusMask = 0;
+const uint8_t moduloBroadcastAddress = 9;
+
+static bool _shouldReplyToBroadcastRead = false;
+
+static uint8_t _eventCode = 0;
+static uint16_t _eventData = 0;
 
 void ModuloInit(
 	volatile uint8_t *statusDDR,
@@ -44,7 +43,7 @@ void ModuloInit(
 	_statusPort = statusPort;
 	_statusMask = statusMask;
 	
-	if (_statusDDR and _statusMask) {
+	if (_statusDDR and _statusMask and _statusPort) {
 		*_statusDDR |= _statusMask;
 	}
 	
@@ -54,7 +53,7 @@ void ModuloInit(
 	// Ensure that we have a valid device id
 	GetDeviceID();
     ModuloReset();
-	ModuloSetStatus(ModuloStatusBlinking);
+	ModuloSetStatus(ModuloStatusOff);
 }
 
 
@@ -62,6 +61,7 @@ void ModuloSetStatus(ModuloStatus status) {
 	_status = status;
 }
 
+long unsigned int millis();
 
 void ModuloUpdateStatusLED() {
 	if (!_statusMask or !_statusPort or !_statusDDR) {
@@ -75,37 +75,14 @@ void ModuloUpdateStatusLED() {
 			*_statusPort |= _statusMask;
 			break;
 		case  ModuloStatusBlinking:
-			_statusCounter = (_statusCounter+1) % 100;
-			if (_statusCounter == 0) {
-				*_statusPort ^= _statusMask;
-			}
-			break;
-#if 0
-		case ModuloStatusBreathing:
-			_statusCounter = (_statusCounter+1) % 10;
-			if (_statusCounter == 0) {
-				_statusBreathe += .15;
-				if (_statusBreathe >= 20) {
-					_statusBreathe = 0;
-				}
-			}
-	
-			uint8_t threshold = _statusBreathe <= 10 ? _statusBreathe : 20-_statusBreathe;
-			if (_statusCounter < threshold) {
+			if ( (millis()/500) % 2) {
 				*_statusPort |= _statusMask;
 			} else {
 				*_statusPort &= ~_statusMask;
 			}
 			break;
-#endif
 	}
-
 }
-
-static bool _shouldReplyToBroadcastRead = false;
-
-static uint8_t _eventCode = 0;
-static uint16_t _eventData = 0;
 
 static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
 	ModuloWriteBuffer buffer(address, data, len);
@@ -147,10 +124,6 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
             case BroadcastCommandGetAddress:
             case BroadcastCommandGetDeviceType:
             case BroadcastCommandGetDeviceVersion:
-            case BroadcastCommandGetCompanyName:
-            case BroadcastCommandGetProductName:
-            case BroadcastCommandGetDocURL:
-            case BroadcastCommandGetDocURLContinued:
                 if (buffer.GetSize() == 2 and buffer.Get<uint16_t>(0) == GetDeviceID()) {
                         _shouldReplyToBroadcastRead = true;
                         return true;
@@ -203,22 +176,16 @@ static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *read
                     return true;
                 }
             case BroadcastCommandGetDeviceType:
-                readBuffer->AppendString(ModuloDeviceType);
+				for (int i=0; i < MODULO_TYPE_SIZE; i++) {
+					char c = GetModuloType(i);
+	                readBuffer->AppendValue<uint8_t>(c);
+					if (c == 0) {
+						break;
+					}
+				}
                 return true;
             case BroadcastCommandGetDeviceVersion:
-                readBuffer->AppendValue<uint16_t>(ModuloDeviceVersion);
-                return true;
-            case BroadcastCommandGetCompanyName:
-                readBuffer->AppendString(ModuloCompanyName);
-                return true;
-            case BroadcastCommandGetProductName:
-                readBuffer->AppendString(ModuloProductName);
-                return true;
-            case BroadcastCommandGetDocURL:
-                readBuffer->AppendString(ModuloDocURL);
-                return true;
-            case BroadcastCommandGetDocURLContinued:
-                readBuffer->AppendString(ModuloDocURL);
+                readBuffer->AppendValue<uint16_t>(GetModuloVersion());
                 return true;
             case BroadcastCommandGetEvent:
 				readBuffer->AppendValue<uint8_t>(_eventCode);
@@ -234,7 +201,7 @@ static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *read
 }
 
 int TwoWireCallback(uint8_t address, uint8_t *buffer, uint8_t len, uint8_t maxLen) {
-	uint8_t command = buffer[0];		
+	uint8_t command = buffer[0];
 	_ModuloWrite(address, buffer, len);
 
 	// Now generate data to send. Note that this overwrites the received data, so

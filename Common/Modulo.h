@@ -24,15 +24,11 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData);
 
 extern const char *ModuloDeviceType;
 extern const uint16_t ModuloDeviceVersion;
-extern const char *ModuloCompanyName;
-extern const char *ModuloProductName;
-extern const char *ModuloDocURL;
 
 enum ModuloStatus {
 	ModuloStatusOff,
 	ModuloStatusOn,
-	ModuloStatusBlinking,
-	ModuloStatusBreathing
+	ModuloStatusBlinking
 };
 
 void ModuloInit(
@@ -44,17 +40,8 @@ void ModuloInit(
 void ModuloSetStatus(ModuloStatus status);
 void ModuloUpdateStatusLED();
 
-#define DEFINE_MODULO_CONSTANTS(companyName, deviceName, deviceVersion, docURL) \
-    const char ModuloCompanyName[] = companyName; \
-    const char ModuloDeviceName[] = deviceName; \
-    const uint8_t ModuloDeviceVersion = deviceVersion; \
-    const char ModuloDocURL[] = docURL;
-
-#define DEFINE_MODULO_FUNCTION_NAMES(functionNames) \
-    const char ModuloFunctionNames[] = functionNames;
-
-#define DEFINE_MODULO_FUNCTION_TYPES(...) \
-    const ModuloDataType ModuloDataTypes[] = {__VA_ARGS__, ModuloDataTypeNone};
-
+#define MODULO_TYPE_SIZE 32
+uint8_t GetModuloType(uint8_t i);
+uint16_t GetModuloVersion();
 
 #endif /* MODULO_H_ */

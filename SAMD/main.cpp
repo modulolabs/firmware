@@ -14,12 +14,6 @@
 #include <pinmux.h>
 
 
-const char *ModuloDeviceType = "co.modulo.colordisplay";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Color Display";
-const char *ModuloDocURL = "modulo.co/docs/ColorDisplay";
-
 #define FUNCTION_APPEND_OP 0
 #define FUNCTION_IS_COMPLETE 1
 #define FUNCTION_GET_BUTTONS 2

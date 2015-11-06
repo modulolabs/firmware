@@ -10,11 +10,15 @@
 
 #if defined(MODULE_TYPE) && (MODULE_TYPE == MODULE_TYPE_JOYSTICK)
 
-#include <avr/io.h>
 #include "Modulo.h"
 #include "Clock.h"
 #include "ADC.h"
+#include "ModuloInfo.h"
+
+#include <avr/io.h>
 #include <util/delay.h>
+
+DECLARE_MODULO("co.modulo.joystick", 1);
 
 volatile bool buttonState = false;
 volatile bool buttonPressed = false;
@@ -22,12 +26,6 @@ volatile bool buttonReleased = false;
 volatile bool positionChanged = false;
 volatile uint8_t hPos = 0;
 volatile uint8_t vPos = 0;
-
-const char *ModuloDeviceType = "co.modulo.joystick";
-const uint16_t ModuloDeviceVersion = 0;
-const char *ModuloCompanyName = "Integer Labs";
-const char *ModuloProductName = "Joystick";
-const char *ModuloDocURL = "modulo.co/docs/joystick";
 
 #define HORIZONTAL_ADC 11
 #define VERTICAL_ADC 10
@@ -121,6 +119,8 @@ int main(void)
 		
 		// Rate limit the updates
 		_delay_ms(5);
+		
+		ModuloUpdateStatusLED();
 	}
 }
 

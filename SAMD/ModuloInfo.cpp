@@ -5,7 +5,7 @@
  *  Author: ekt
  */ 
 
-#include "DeviceID.h"
+#include "Modulo.h"
 
 static uint16_t _deviceID = 0xFFFF;
 
@@ -31,3 +31,15 @@ uint16_t GetDeviceID() {
 	return _deviceID;
 }
 
+static const uint8_t moduloType[MODULO_TYPE_SIZE] = "co.modulo.colordisplay";
+
+uint8_t GetModuloType(uint8_t i) {
+	if (i < MODULO_TYPE_SIZE) {
+		return moduloType[i];
+	}
+	return 0;
+}
+
+uint16_t GetModuloVersion() {
+	return 1;
+}
