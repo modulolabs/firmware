@@ -10,7 +10,7 @@
 #include "Modulo.h"
 #include "Clock.h"
 
-static volatile unsigned long timer0_overflow_count = 0;
+static volatile uint32_t timer0_overflow_count = 0;
 
 void ClockInit()
 {
@@ -24,26 +24,30 @@ void ClockInit()
 	sei();
 }
 
-// the prescaler is set so that timer0 ticks every 64 clock cycles, and the
-// the overflow handler is called every 256 ticks.
-//
-// At 8Mhz, MICROSECONDS_PER_TICK is 8.
-#define MICROSECONDS_PER_TICK (clockCyclesToMicroseconds(64))
-
-unsigned long micros() {
-	// If TCNT0 overflows after disabling interrupts but before reading its value,
-	// then the time will be up to 256 ticks off. Not sure how to fix that.
-    cli();
-	unsigned long ticks = TCNT0;
-	unsigned long overflows = timer0_overflow_count;
-	sei();
+uint32_t ClockGetTicks() {
+	uint8_t sreg = SREG;
+	cli();
+	uint32_t ticks = TCNT0;
+	// if TNCT0 is small and the overflow flag is set, then the counter 
+	// overflowed after we disabled interrupts and the ISR hasn't run yet.
+	// Count that as an extra overflow.
+	if ((TIFR0 & _BV(TOV0)) and ticks < 128) {
+		ticks += 256;
+	}
+	ticks += 256*timer0_overflow_count;
+	SREG = sreg;
 	
-	return (overflows*256 + ticks)*MICROSECONDS_PER_TICK;
+	return ticks;
 }
 
-unsigned long millis() {
+int32_t micros() {
+	return ClockGetTicks()*MICROSECONDS_PER_TICK;
+}
+
+int32_t millis() {
     return micros()/1000;
 }
+
 
 ISR(TIMER0_OVF_vect)
 {
