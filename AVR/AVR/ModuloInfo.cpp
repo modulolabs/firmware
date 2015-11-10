@@ -24,8 +24,6 @@ uint16_t GetDeviceID() {
 	// If _deviceID has been not been initialized, load it from the EEPROM
 	if (_moduloID == 0xFFFF) {
 		// Load the device ID from EEPROM.
-		volatile uint16_t * volatile addr = &moduloInfo.id;
-		
 		_moduloID = eeprom_read_word(&moduloInfo.id);
 
 		if (_moduloID == 0xFFFF) {

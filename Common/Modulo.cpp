@@ -61,7 +61,7 @@ void ModuloSetStatus(ModuloStatus status) {
 	_status = status;
 }
 
-long unsigned int millis();
+int32_t millis();
 
 void ModuloUpdateStatusLED() {
 	if (!_statusMask or !_statusPort or !_statusDDR) {
