@@ -17,7 +17,7 @@
 PWM::PWM(uint8_t timerNum, uint8_t channel) :
 	_timerNum(timerNum), _channel(channel), _topValue(0)
 {
-	_SetMode(14, 2, 2);
+	_SetMode(8, 2, 2);
 	//SetFrequency(31250);
     SetFrequency(50);
     
@@ -103,12 +103,10 @@ void PWM::SetCompareEnabled(bool enabled) {
 void PWM::_SetTop(uint16_t value) {
 	switch (_timerNum) {
 		case 1:
-			ICR1H = value >> 8;
-			ICR1L = value & 0xFF;
+			ICR1 = value;
 			break;
 		case 2:
-			ICR2H = value >> 8;
-			ICR2L = value & 0xFF;
+			ICR2 = value;
 			break;
 	}
 }
@@ -120,25 +118,19 @@ void PWM::SetValue(uint16_t inValue) {
 
     bool odd = _channel % 2;
 
-	// Note: when writing to 16 bit registers, the high byte
-	// must be written before the low byte.
 	switch(_timerNum) {
 		case 1:
             if (odd) {
-    			OCR1AH = value >> 8;
-	    		OCR1AL = value & 0xFF;
+    			OCR1A = value;
             } else {
-                OCR1BH = value >> 8;
-            	OCR1BL = value & 0xFF;
+                OCR1B = value;
             }
 			break;
 		case 2:
             if (odd) {
-    			OCR2AH = value >> 8;
-	    		OCR2AL = value & 0xFF;
+    			OCR2A = value;
             } else {
-             	OCR2BH = value >> 8;
-             	OCR2BL = value & 0xFF;   
+             	OCR2B = value;   
             }
 			break;
 	}

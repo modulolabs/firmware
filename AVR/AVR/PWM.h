@@ -10,6 +10,7 @@
 #define TIMER_H_
 
 #include <stdint.h>
+#include <avr/io.h>
 
 // Manages a hardware timer for PWM waveform generation
 class PWM {
@@ -37,6 +38,33 @@ public:
 
 	// Set the value to use for this PWM.
 	void SetValue(uint16_t value);
+
+	// Set the value to use for this PWM without scaling to the top value
+	void SetRawValue(uint16_t value) {
+		bool odd = _channel % 2;
+
+		switch(_timerNum) {
+			case 1:
+				if (odd) {
+    				OCR1A = value;
+				} else {
+					OCR1B = value;
+				}
+				break;
+			case 2:
+				if (odd) {
+    				OCR2A = value;
+				} else {
+             		OCR2B = value;   
+				}
+				break;
+		}
+	}
+
+	// Get the top value based on the current frequency setting
+	uint16_t GetTopValue() {
+		return _topValue;
+	}
 
     // Sets or clears the bit for this channel in the channel
 	// output enable register.
