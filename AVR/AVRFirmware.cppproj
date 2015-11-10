@@ -232,6 +232,12 @@
     <Compile Include="AVR\ModuloInfo.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="AVR\MotorCurrentLimit.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="AVR\MotorCurrentLimit.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="AVR\PWM.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -242,6 +248,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\Random.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="AVR\StepperDriver.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="AVR\StepperDriver.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\Trampoline.cpp">
