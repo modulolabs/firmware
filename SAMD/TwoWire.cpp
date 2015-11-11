@@ -17,7 +17,7 @@ bool ModuloHandleDataReceived(uint8_t address, uint8_t *data);
 uint8_t read_buffer[DATA_LENGTH] = {};
 uint8_t write_buffer[DATA_LENGTH] = {};
 volatile uint8_t addr;
-static const uint8_t broadcastAddress = 9;
+static uint8_t _broadcastAddress = 9;
 
 struct i2c_slave_module i2c_slave_instance;
 enum i2c_slave_direction dir;
@@ -39,7 +39,7 @@ void i2c_read_request_callback(struct i2c_slave_module *module)
 	SercomI2cs *const i2c_hw = &(module->hw->I2CS);
 	addr = i2c_hw->DATA.reg >> 1;
 	
-	if ((addr == broadcastAddress or addr == deviceAddress) and isReadValid) {
+	if ((addr == _broadcastAddress or addr == deviceAddress) and isReadValid) {
 		packet.data_length = DATA_LENGTH;
 	}
 	
@@ -71,7 +71,7 @@ void i2c_write_request_callback(struct i2c_slave_module *const module)
 	addr = i2c_hw->DATA.reg >> 1;
 	asm("nop");
 	
-	if (addr == broadcastAddress or addr == deviceAddress) {
+	if (addr == _broadcastAddress or addr == deviceAddress) {
 		packet.data_length = DATA_LENGTH;
 	} else {
 		packet.data_length = 0;
@@ -88,7 +88,9 @@ void i2c_write_complete_callback(struct i2c_slave_module *const module) {
 
 
 
-void TwoWireInit(bool useInterrupts) {
+void TwoWireInit(uint8_t broadcastAddress, bool useInterrupts) {
+	_broadcastAddress = broadcastAddress;
+	
 	struct i2c_slave_config config_i2c_slave;
 	i2c_slave_get_config_defaults(&config_i2c_slave);
 	config_i2c_slave.address = broadcastAddress;

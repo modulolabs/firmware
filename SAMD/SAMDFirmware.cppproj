@@ -608,9 +608,6 @@
     <Compile Include="OpStream.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="RingBuffer.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="SSD1331.cpp">
       <SubType>compile</SubType>
     </Compile>

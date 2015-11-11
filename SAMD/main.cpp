@@ -137,8 +137,7 @@ int main (void)
 	
 	cpu_irq_enable();
 	
-	// XXX: Not calling ModuloInit
-	TwoWireInit();
+	ModuloInit(NULL, NULL, 0);
 
 	struct port_config config_port_pin;
 	port_get_config_defaults(&config_port_pin);
@@ -165,7 +164,6 @@ int main (void)
 	
 	while (1) {
 		stream.ProcessOp();
-		
 		
 		bool button1 = !port_pin_get_input_level(BUTTON_1_PIN);
 		bool button2 = !port_pin_get_input_level(BUTTON_2_PIN);
