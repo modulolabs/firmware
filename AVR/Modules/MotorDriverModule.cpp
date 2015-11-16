@@ -30,7 +30,11 @@ enum FunctionCode {
 	FunctionSetValue,
     FunctionSetMode,
     FunctionSetFrequency,
-	FunctionSetCurrentLimit
+	FunctionSetCurrentLimit,
+	FunctionSetStepperSpeed,
+	FunctionGetStepperPosition,
+	FunctionSetStepperTarget,
+	FunctionAddStepperOffset
 };
 
 /*
@@ -54,6 +58,7 @@ enum FunctionCode {
 #define FAULT_PORT PORTB
 #define FAULT_DDR DDRB
 #define FAULT_PUE PUEB
+#define FAULT_PINS PINB
 #define FAULT_PIN 0
 
 #define MODE_DISABLED 0
@@ -72,15 +77,13 @@ PWM pwm[] = {PWM(2,6),  // Timer 2, output compare 6
 StepperDriver stepper;
 uint8_t _mode = MODE_DISABLED;
 
+bool faultState = false;
+bool faultSet = false;
+bool faultCleared = false;
 
-void _setValue(uint8_t channel, uint16_t value) {
-    if (channel >= 4) {
-        return;
-    }
-    pwm[channel].SetValue(value);
-}
+bool positionReached = false;
 
-void _setMode(uint8_t mode) {
+static void _setMode(uint8_t mode) {
 	ENABLE_DDR |= ENABLE_MASK;
 	
 	_mode = mode;	
@@ -91,16 +94,21 @@ void _setMode(uint8_t mode) {
 	}
 }
 
+static void _setValue(uint8_t channel, uint16_t value) {
+    if (channel >= 4) {
+        return;
+    }
+	if (_mode != MODE_DC) {
+		_setMode(MODE_DC);
+	}
+    pwm[channel].SetValue(value);
+}
 
-void _setFrequency( uint16_t frequency) {
+static void _setFrequency( uint16_t frequency) {
 	for (int i=0; i < 4; i++) {
 	    pwm[i].SetFrequency(frequency);
 	}
 }
-
-
-
-
 
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
@@ -129,21 +137,65 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 			}
 			MotorCurrentLimitSet(buffer.Get<uint8_t>(0));
 			return true;
+		case FunctionSetStepperSpeed:
+			if (buffer.GetSize() == 3) {
+				stepper.setSpeed(buffer.Get<uint16_t>(0), buffer.Get<uint8_t>(2));
+				return true;
+			}
+			break;
+		case FunctionGetStepperPosition:
+			return buffer.GetSize() == 0;
+		case FunctionSetStepperTarget:
+			if (buffer.GetSize() == 4) {
+				_setMode(MODE_STEPPER);
+				stepper.setTargetPosition(buffer.Get<int32_t>(0));
+				return true;
+			}
+			break;
+		case FunctionAddStepperOffset:
+			if (buffer.GetSize() == 2) {
+				stepper.addOffset(buffer.Get<int16_t>(0));
+				return true;
+			}
+			break;
 	}
 	return false;
 }
 
 bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
     switch (command) {
+		case FunctionGetStepperPosition:
+			buffer->AppendValue<int32_t>(stepper.getPosition());
+			return true;
     }
     return false;
 }
 
+#define EVENT_POSITION_REACHED 0
+#define EVENT_FAULT 1
+
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
+	if (positionReached) {
+		*eventCode = EVENT_POSITION_REACHED;
+		*eventData = 0;
+		return true;
+	}
+	if (faultSet or faultCleared) {
+		*eventCode = EVENT_FAULT;
+		*eventData = (faultCleared << 1) | faultSet;
+		return true;
+	}
 	return false;
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
+	if (eventCode == EVENT_FAULT and (eventData == (faultCleared << 1) | faultSet)) {
+		faultSet = false;
+		faultCleared = false;
+	}
+	if (eventCode == EVENT_POSITION_REACHED) {
+		positionReached = false;
+	}
 }
 
 void ModuloReset() {	
@@ -154,6 +206,7 @@ void ModuloReset() {
 	
 	FAULT_PUE |= _BV(FAULT_PIN);
 	
+	stepper.init();
 	_setMode(MODE_DISABLED);
 	_setFrequency(DEFAULT_FREQUENCY);
 	MotorCurrentLimitInit();
@@ -167,13 +220,14 @@ void ModuloReset() {
 
 int main(void)
 {
-	ModuloInit(&DDRA, &PORTA, _BV(5));
+	ModuloInit();
 	ClockInit();
 
-	_setMode(MODE_STEPPER);
-	stepper.offsetPosition(16);
-	stepper.setSpeed(10, 1);
-	stepper.setTargetPosition(10*256L*200L + 32);
+
+	//_setMode(MODE_STEPPER);
+	//stepper.offsetPosition(16);
+	stepper.setSpeed(20, 1);
+	//stepper.setTargetPosition(10*256L*200L + 32);
 	
 	//MotorCurrentLimitSet(32);
 	
@@ -186,8 +240,19 @@ int main(void)
 		prevTicks = newTicks;
 		
 		if (_mode == MODE_STEPPER) {
-			stepper.update(ticksDelta, pwm);
+			positionReached |= stepper.update(ticksDelta, pwm);
 		}
+		
+		bool newFaultState = !(FAULT_PINS & _BV(FAULT_PIN));
+		if (newFaultState != faultState) {
+			faultState = newFaultState;
+			if (newFaultState) {
+				faultSet = true;
+				faultCleared = false;
+			} else {
+				faultCleared = true;
+			}
+		}	
 	}
 }
 

@@ -156,7 +156,6 @@
   </avrgcccpp.linker.memorysettings.Flash>
   <avrgcccpp.linker.memorysettings.Eeprom>
     <ListValues>
-      <Value>.eeprom=0x0</Value>
       <Value>.moduloInfo=0x1dc</Value>
     </ListValues>
   </avrgcccpp.linker.memorysettings.Eeprom>

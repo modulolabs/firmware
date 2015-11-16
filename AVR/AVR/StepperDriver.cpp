@@ -8,10 +8,17 @@
 
 #include "StepperDriver.h"
 
-StepperDriver::StepperDriver() : _position(0),  _targetPosition(0), _ticksPerStep(200*125),
-	_stepSize(1), _stepSizeMask(0xFFFFFFFF)
+StepperDriver::StepperDriver()
 {
 	initStepTable();
+	init();
+}
+
+void StepperDriver::init() {
+	_position = 0;
+	_targetPosition = 0;
+	
+	setSpeed(20, 1);
 }
 	
 // Get the current position of the stepper motor in microsteps
@@ -20,7 +27,7 @@ int32_t StepperDriver::getPosition() {
 }
 	
 // Add an offset to the current position
-void StepperDriver::offsetPosition(int32_t offset) {
+void StepperDriver::addOffset(int32_t offset) {
 	_position += offset;
 }
 	
@@ -50,14 +57,14 @@ void StepperDriver::getStepTableValue(int32_t pos, uint16_t *value, bool *negati
 }
 	
 // Step size must be a power of 2 and <= STEP_TABLE_SIZE
-void StepperDriver::setSpeed(int32_t ticksPerStep, int16_t stepSize) {
+void StepperDriver::setSpeed(int32_t ticksPerStep, uint8_t resolution) {
 	_ticksPerStep = ticksPerStep;
-	_stepSize = stepSize;
+	_stepSize = (256 >> resolution);
 		
 	// Prepare a mask, that when bitwise anded with the
 	// position will make the position a multiple of the
 	// step size
-	_stepSizeMask = ~(((uint32_t)stepSize)-1);
+	_stepSizeMask = ~(((uint32_t)_stepSize)-1);
 }
 	
 void StepperDriver::setTargetPosition(int32_t position) {
@@ -68,28 +75,31 @@ void StepperDriver::setTargetPosition(int32_t position) {
 // to measure the stepper motor update time.
 // #define MEASURE_UPDATE_TIME	
 
-void StepperDriver::update(uint32_t ticks, PWM pwm[4]) {
+bool StepperDriver::update(uint32_t ticks, PWM pwm[4]) {
 #if MEASURE_UPDATE_TIME		
 	uint32_t startTime = ClockGetTicks();
 #endif
 
 	_time += ticks;
 	if (_time < _ticksPerStep) {
-		return;
+		return false;
 	}
-					
+	
+	bool targetReached = false;
 	while (_time >= _ticksPerStep) {
 		_time -= _ticksPerStep;
 				
 		if (_position < _targetPosition) {
 			_position = _position+_stepSize;
-			if (_position > _targetPosition) {
+			if (_position >= _targetPosition) {
 				_position = _targetPosition;
+				targetReached = true;
 			}
 		} else if (_position > _targetPosition) {
 			_position = _position-_stepSize;
-			if (_position < _targetPosition) {
+			if (_position <= _targetPosition) {
 				_position = _targetPosition;
+				targetReached = true;
 			}
 		}
 	}
@@ -103,6 +113,8 @@ void StepperDriver::update(uint32_t ticks, PWM pwm[4]) {
 		asm("nop");
 	}
 #endif
+
+	return targetReached;
 }
 	
 void StepperDriver::setCoils(PWM pwm[4]) {
