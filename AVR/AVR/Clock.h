@@ -26,8 +26,8 @@
 #define interrupts() sei()
 #define noInterrupts() cli()
 
-int32_t micros();
-int32_t millis();
+uint32_t micros();
+uint32_t millis();
 void delay(uint16_t duration);
 void delayMicroseconds(uint16_t duration);
 

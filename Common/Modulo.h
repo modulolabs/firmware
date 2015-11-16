@@ -31,11 +31,7 @@ enum ModuloStatus {
 	ModuloStatusBlinking
 };
 
-void ModuloInit(
-	volatile uint8_t *statusDDR,
-	volatile uint8_t *statusPort,
-	uint8_t statusMask,
-	bool useTwoWireInterrupt = true);
+void ModuloInit(bool useTwoWireInterrupt = true);
 	
 void ModuloSetStatus(ModuloStatus status);
 void ModuloUpdateStatusLED();

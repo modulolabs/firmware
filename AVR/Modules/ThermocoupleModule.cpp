@@ -132,7 +132,8 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 int main(void)
 {
 	ClockInit();
-	ModuloInit(&DDRA, &PORTA, _BV(7));
+	ModuloInit();
+	InitStatusLED(7);
 	
 	while(1)
 	{

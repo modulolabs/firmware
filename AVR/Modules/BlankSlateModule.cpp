@@ -338,18 +338,6 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
             }
             _setPullups(buffer.Get<uint8_t>(0));
             return true;
-        case FUNCTION_SET_DEBOUNCE:
-            if (buffer.GetSize() != 2) {
-                return false;
-            }
-            //_setDebounce(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
-            return true;
-        case FUNCTION_SET_DEBOUNCES:
-            if (buffer.GetSize() != 1) {
-                return false;
-            }
-            //_setDebounces(buffer.Get<uint8_t>(0));
-            return true;
         case FUNCTION_SET_PWM_FREQUENCY:
             if (buffer.GetSize() != 3) {
                 return false;
@@ -424,8 +412,8 @@ uint16_t capSense(uint8_t pin) {
 int main(void)
 {
 	ClockInit();
-	ModuloInit(&DDRA, &PORTA, _BV(5));
-
+	ModuloInit();
+	
 	while(1) {
         _updateSoftPWM();
 /*

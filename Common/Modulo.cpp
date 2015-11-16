@@ -10,6 +10,7 @@
 #include "TwoWire.h"
 #include "DeviceID.h"
 #include "Clock.h"
+#include "StatusLED.h"
 #include <string.h>
 
 #define BroadcastCommandGlobalReset 0
@@ -22,31 +23,16 @@
 #define BroadcastCommandClearEvent 7
 #define BroadcastCommandSetStatusLED 8
 
-static ModuloStatus _status;
-static volatile uint8_t *_statusDDR = NULL;
-static volatile uint8_t *_statusPort = NULL;
-static volatile uint8_t _statusMask = 0;
 const uint8_t moduloBroadcastAddress = 9;
 
 static bool _shouldReplyToBroadcastRead = false;
 
 static uint8_t _eventCode = 0;
 static uint16_t _eventData = 0;
+static ModuloStatus _status = ModuloStatusOff;
 
-void ModuloInit(
-	volatile uint8_t *statusDDR,
-	volatile uint8_t *statusPort,
-	uint8_t statusMask,
-	bool useTwoWireInterrupt)
+void ModuloInit(bool useTwoWireInterrupt)
 {
-	_statusDDR = statusDDR;
-	_statusPort = statusPort;
-	_statusMask = statusMask;
-	
-	if (_statusDDR and _statusMask and _statusPort) {
-		*_statusDDR |= _statusMask;
-	}
-	
 	TwoWireInit(moduloBroadcastAddress, useTwoWireInterrupt);
 	TwoWireSetDeviceAddress(0);
 
@@ -61,25 +47,18 @@ void ModuloSetStatus(ModuloStatus status) {
 	_status = status;
 }
 
-int32_t millis();
+uint32_t millis();
 
 void ModuloUpdateStatusLED() {
-	if (!_statusMask or !_statusPort or !_statusDDR) {
-		return;
-	}
 	switch(_status) {
 		case ModuloStatusOff:
-			*_statusPort &= ~_statusMask;
+			SetStatusLED(false);
 			break;
 		case ModuloStatusOn:
-			*_statusPort |= _statusMask;
+			SetStatusLED(true);
 			break;
 		case  ModuloStatusBlinking:
-			if ( (millis()/500) % 2) {
-				*_statusPort |= _statusMask;
-			} else {
-				*_statusPort &= ~_statusMask;
-			}
+			SetStatusLED((millis()/500) % 2);
 			break;
 	}
 }

@@ -182,8 +182,7 @@ int main(void)
 	
 	ClockInit();
 	
-	ModuloInit(&STATUS_DDR, &STATUS_PORT, _BV(STATUS_LED_PIN),
-		false /*useTwoWireInterupt*/);
+	ModuloInit(false /*useTwoWireInterupt*/);
 
 	IRInit();
 

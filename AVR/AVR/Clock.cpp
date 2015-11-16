@@ -40,11 +40,11 @@ uint32_t ClockGetTicks() {
 	return ticks;
 }
 
-int32_t micros() {
+uint32_t micros() {
 	return ClockGetTicks()*MICROSECONDS_PER_TICK;
 }
 
-int32_t millis() {
+uint32_t millis() {
     return micros()/1000;
 }
 

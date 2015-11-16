@@ -121,7 +121,7 @@ int main(void)
 {
 	ClockInit();
     
-	ModuloInit(&DDRA, &PORTA, _BV(5));
+	ModuloInit();
 
 	volatile float filteredTemp = readTemperature();
 	

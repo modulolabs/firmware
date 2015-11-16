@@ -91,7 +91,7 @@ int main(void)
 {
 	ClockInit();
     
-	ModuloInit(&DDRA, &PORTA, _BV(5));
+	ModuloInit();
 	PUEB |= (1 << BUTTON_PIN);
 
 	while(1)

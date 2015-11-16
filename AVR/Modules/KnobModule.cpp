@@ -50,10 +50,6 @@ DECLARE_MODULO("co.modulo.knob", 1);
 #define BLUE_DDR DDRB
 #define BLUE_PORT PORTB
 
-#define STATUS_PORT PORTA
-#define STATUS_DDR DDRA
-#define STATUS_PIN 5
-
 
 /*
 void HSVToRGB(float h, float s, float v,
@@ -277,7 +273,7 @@ int main(void)
 {
 
     ClockInit();
-    ModuloInit(&STATUS_DDR, &STATUS_PORT, _BV(STATUS_PIN));
+    ModuloInit();
 
 	SetRGB(0,0,0);
 	
