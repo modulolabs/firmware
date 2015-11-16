@@ -1,9 +1,11 @@
 
 #include "Adafruit_GFX/Adafruit_GFX.h"
 #include "SSD1331.h"
-#include "Modulo.h"
+#include "ModuloClock.h"
 #include "TwoWire.h"
 #include "OpStream.h"
+#include "Clock.h"
+#include "ModuloInfo.h"
 
 #include <asf.h>
 
@@ -28,6 +30,7 @@ volatile uint8_t buttonsReleased = 0;
 Adafruit_GFX display;
 OpStream stream(&display);
 
+DECLARE_MODULO("co.modulo.colordisplay", 1);
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 	switch (buffer.GetCommand()) {
@@ -132,13 +135,24 @@ void drawGammaTest() {
 
 int main (void)
 {
+	
+	WDT->CTRL.reg &= ~WDT_CTRL_ENABLE;
+	
 	system_init();
 	delay_init();
 	
 	cpu_irq_enable();
 	
-	ModuloInit(NULL, NULL, 0);
-
+	// Configure NVM
+	struct nvm_config config_nvm;
+	nvm_get_config_defaults(&config_nvm);
+	config_nvm.manual_page_write = false;
+	nvm_set_config(&config_nvm);
+	
+	ClockInit();
+	LoadModuloInfo();
+	ModuloInit();
+	
 	struct port_config config_port_pin;
 	port_get_config_defaults(&config_port_pin);
 	
@@ -154,8 +168,8 @@ int main (void)
 	port_pin_set_output_level(SHDN_PIN, true);
 	
 	port_pin_set_config(LED_PIN, &config_port_pin);
-	
 	port_pin_set_output_level(LED_PIN, true);
+	
 	
 	SSD1331Init();
 
@@ -163,6 +177,8 @@ int main (void)
 	SSD1331Refresh(display.width(), display.height(), display.getData());
 	
 	while (1) {
+		ModuloUpdateStatusLED();
+		
 		stream.ProcessOp();
 		
 		bool button1 = !port_pin_get_input_level(BUTTON_1_PIN);

@@ -6,14 +6,17 @@
  */ 
 
 #include "Modulo.h"
+#include "ModuloInfo.h"
+#include "asf.h"
 
-static uint16_t _deviceID = 0xFFFF;
+// Reserve space for the Modulo info in the nvm space
+// At build time the .moduloInfo section will be set to a specific fixed address so that the bootloader can
+// also access it.
+ModuloInfo _moduloInfo = {.id=0xFFFF, .version=0xFFFF, ""};
+		
+extern ModuloInfo moduloInfo;
 
-uint16_t GetDeviceID() {
-	if (_deviceID != 0xFFFF) {
-		return _deviceID;
-	}
-	
+static uint16_t _generateDeviceID() {
 	// Extract the serial number from the specific addresses according to the data sheet
 	uint32_t serialNum[] = {
 		*(uint32_t*)(0x0080A00C),
@@ -22,24 +25,50 @@ uint16_t GetDeviceID() {
 	    *(uint32_t*)(0x0080A048)};
 	
 	// Hash the 128 bit unique ID into a 16 bit unique-ish ID
-	_deviceID = 0;
+	uint16_t deviceID = 0;
 	for (int i=0; i < 4; i++) {
-		_deviceID ^= (serialNum[i] & 0xFFFF);
-		_deviceID ^= (serialNum[i] >> 16);
+		deviceID ^= (serialNum[i] & 0xFFFF);
+		deviceID ^= (serialNum[i] >> 16);
 	}
-	
-	return _deviceID;
+	return deviceID;
 }
 
-static const uint8_t moduloType[MODULO_TYPE_SIZE] = "co.modulo.colordisplay";
+void LoadModuloInfo() {
+	
+	nvm_read_buffer((uint32_t)&moduloInfo, (uint8_t*)&_moduloInfo, sizeof(ModuloInfo));
+
+	if (_moduloInfo.id != 0xFFFF) {
+		return;
+	}
+	
+	// Valid id not found in the persistent info. Generate it.
+	_moduloInfo.id = _generateDeviceID();
+	
+	// Save the new ID
+	SaveModuloInfo();
+}
+
+void SaveModuloInfo() {
+	nvm_erase_row((uint32_t)&moduloInfo);
+	nvm_write_buffer((uint32_t)&moduloInfo, (uint8_t*)&_moduloInfo, sizeof(ModuloInfo));
+}
+
+uint16_t GetDeviceID() {
+	return _moduloInfo.id;
+}
+
+void SetDeviceID(uint16_t deviceID) {
+	_moduloInfo.id = deviceID;
+	SaveModuloInfo();
+}
 
 uint8_t GetModuloType(uint8_t i) {
 	if (i < MODULO_TYPE_SIZE) {
-		return moduloType[i];
+		return moduloInfo.type[i];
 	}
 	return 0;
 }
 
 uint16_t GetModuloVersion() {
-	return 1;
+	return moduloInfo.version;
 }

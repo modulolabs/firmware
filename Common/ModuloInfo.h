@@ -22,6 +22,7 @@ struct ModuloInfo {
 #define DECLARE_MODULO(moduloType, moduloVersion) \
 	ModuloInfo moduloInfo __attribute__((section(".moduloInfo"))) = {.id=0xFFFF, .version=moduloVersion, moduloType};
 
-
+void LoadModuloInfo();
+void SaveModuloInfo();
 
 #endif /* MODULOINFO_H_ */
