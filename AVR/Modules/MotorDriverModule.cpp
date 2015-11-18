@@ -189,7 +189,7 @@ bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
-	if (eventCode == EVENT_FAULT and (eventData == (faultCleared << 1) | faultSet)) {
+	if (eventCode == EVENT_FAULT and (eventData == ((faultCleared << 1) | faultSet))) {
 		faultSet = false;
 		faultCleared = false;
 	}
