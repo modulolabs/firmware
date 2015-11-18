@@ -9,12 +9,14 @@
 #include "ModuloInfo.h"
 #include "asf.h"
 
-// Reserve space for the Modulo info in the nvm space
-// At build time the .moduloInfo section will be set to a specific fixed address so that the bootloader can
-// also access it.
-ModuloInfo _moduloInfo = {.id=0xFFFF, .version=0xFFFF, ""};
-		
+// moduloInfo is initialized by the DECLARE_MODULO macro and is stored at a specific
+// location in NVM space accessible by both the application and bootloader. This
+// lets the bootloader discover the moduloType, moduloID, and version of the currently
+// loaded application.
 extern ModuloInfo moduloInfo;
+
+// _localModuloInfo is a copy of moduloInfo that's stored in ordinary RAM space.
+ModuloInfo _localModuloInfo = {.id=0xFFFF, .version=0xFFFF, ""};
 
 static uint16_t _generateDeviceID() {
 	// Extract the serial number from the specific addresses according to the data sheet
@@ -33,42 +35,41 @@ static uint16_t _generateDeviceID() {
 	return deviceID;
 }
 
-void LoadModuloInfo() {
-	
-	nvm_read_buffer((uint32_t)&moduloInfo, (uint8_t*)&_moduloInfo, sizeof(ModuloInfo));
 
-	if (_moduloInfo.id != 0xFFFF) {
-		return;
+void LoadModuloInfo() {
+	_localModuloInfo = moduloInfo;
+
+	if (_localModuloInfo.id == 0xFFFF) {
+		// Valid id not found in the persistent info. Generate it.
+		_localModuloInfo.id = _generateDeviceID();
+	
+		// Save the new ID
+		SaveModuloInfo();
 	}
-	
-	// Valid id not found in the persistent info. Generate it.
-	_moduloInfo.id = _generateDeviceID();
-	
-	// Save the new ID
-	SaveModuloInfo();
 }
+
 
 void SaveModuloInfo() {
 	nvm_erase_row((uint32_t)&moduloInfo);
-	nvm_write_buffer((uint32_t)&moduloInfo, (uint8_t*)&_moduloInfo, sizeof(ModuloInfo));
+	nvm_write_buffer((uint32_t)&moduloInfo, (uint8_t*)&_localModuloInfo, sizeof(ModuloInfo));
 }
 
 uint16_t GetDeviceID() {
-	return _moduloInfo.id;
+	return _localModuloInfo.id;
 }
 
 void SetDeviceID(uint16_t deviceID) {
-	_moduloInfo.id = deviceID;
+	_localModuloInfo.id = deviceID;
 	SaveModuloInfo();
 }
 
 uint8_t GetModuloType(uint8_t i) {
 	if (i < MODULO_TYPE_SIZE) {
-		return moduloInfo.type[i];
+		return _localModuloInfo.type[i];
 	}
 	return 0;
 }
 
 uint16_t GetModuloVersion() {
-	return moduloInfo.version;
+	return _localModuloInfo.version;
 }

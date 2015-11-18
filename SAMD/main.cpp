@@ -134,24 +134,20 @@ void drawGammaTest() {
 
 
 int main (void)
-{
-	
-	WDT->CTRL.reg &= ~WDT_CTRL_ENABLE;
-	
+{	
 	system_init();
 	delay_init();
 	
 	cpu_irq_enable();
+
+	// Disable the watchdog timer, which was enabled by the bootloader
+	WDT->CTRL.reg &= ~WDT_CTRL_ENABLE;
 	
 	// Configure NVM
 	struct nvm_config config_nvm;
 	nvm_get_config_defaults(&config_nvm);
 	config_nvm.manual_page_write = false;
 	nvm_set_config(&config_nvm);
-	
-	ClockInit();
-	LoadModuloInfo();
-	ModuloInit();
 	
 	struct port_config config_port_pin;
 	port_get_config_defaults(&config_port_pin);
@@ -173,8 +169,12 @@ int main (void)
 	
 	SSD1331Init();
 
-	display.fillScreen(Color(80,0,60).Color565());
-	SSD1331Refresh(display.width(), display.height(), display.getData());
+	//display.fillScreen(Color(80,0,60).Color565());
+	//SSD1331Refresh(display.width(), display.height(), display.getData());
+	
+	ClockInit();
+	LoadModuloInfo();
+	ModuloInit();
 	
 	while (1) {
 		ModuloUpdateStatusLED();
