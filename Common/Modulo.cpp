@@ -15,6 +15,7 @@
 
 #define BroadcastCommandGlobalReset 0
 #define BroadcastCommandGetNextDeviceID 1
+#define BroadcastCommandGetNextUnassignedDeviceID 9
 #define BroadcastCommandSetAddress 2
 #define BroadcastCommandGetAddress 3
 #define BroadcastCommandGetDeviceType 4
@@ -78,11 +79,16 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
             case BroadcastCommandGlobalReset:
                 if (buffer.GetSize() == 0) {
                     TwoWireSetDeviceAddress(0);
+					ModuloSetStatus(ModuloStatusOff);	
                     ModuloReset();
                 }
                 break;
 
-
+            case BroadcastCommandGetNextUnassignedDeviceID:
+				if (TwoWireGetDeviceAddress() != 0) {
+					return false;
+				}
+				// Fall through to GetNextDeviceID
             case BroadcastCommandGetNextDeviceID:
                 if (buffer.GetSize() == 2 and
                     (buffer.Get<uint16_t>(0) <= GetDeviceID())) {
@@ -104,8 +110,8 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
             case BroadcastCommandGetDeviceType:
             case BroadcastCommandGetDeviceVersion:
                 if (buffer.GetSize() == 2 and buffer.Get<uint16_t>(0) == GetDeviceID()) {
-                        _shouldReplyToBroadcastRead = true;
-                        return true;
+					_shouldReplyToBroadcastRead = true;
+                    return true;
                 }
                 break;
             case BroadcastCommandSetStatusLED:
@@ -140,6 +146,7 @@ static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *read
         }
         switch(command) {
             case BroadcastCommandGetNextDeviceID:
+			case BroadcastCommandGetNextUnassignedDeviceID:			
                 {
                     // We have to return the deviceID in big endian order, so that if a collision occurs
                     // the smallest value will win.
@@ -157,7 +164,7 @@ static bool _ModuloRead(uint8_t address, uint8_t command, ModuloReadBuffer *read
             case BroadcastCommandGetDeviceType:
 				for (int i=0; i < MODULO_TYPE_SIZE; i++) {
 					char c = GetModuloType(i);
-	                readBuffer->AppendValue<uint8_t>(c);
+					readBuffer->AppendValue<uint8_t>(c);
 					if (c == 0) {
 						break;
 					}
