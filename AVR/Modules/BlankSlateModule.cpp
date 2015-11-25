@@ -12,7 +12,7 @@
 #include "ModuloInfo.h"
 #include "TwoWire.h"
 
-DECLARE_MODULO("co.modulo.io", 1);
+DECLARE_MODULO("co.modulo.blankslate", 1);
 
 
 /*

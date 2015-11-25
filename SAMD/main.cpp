@@ -32,7 +32,7 @@ volatile uint8_t buttonsReleased = 0;
 Adafruit_GFX display;
 OpStream stream(&display);
 
-DECLARE_MODULO("co.modulo.colordisplay", 1);
+DECLARE_MODULO("co.modulo.display", 1);
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 	switch (buffer.GetCommand()) {
