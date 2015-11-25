@@ -10,6 +10,7 @@
 #include "PWM.h"
 #include "Modulo.h"
 #include "ModuloInfo.h"
+#include "TwoWire.h"
 
 DECLARE_MODULO("co.modulo.io", 1);
 
@@ -91,16 +92,32 @@ static volatile bool _analogReadStarted = false;
 // The first two PWMs are on Timer1, the second two are on Timer2
 // The output compares are 2, 1, 0, and 7.
 PWM pwm7(2/*timer*/, 7 /*channel*/);
-PWM pwm1(1/*timer*/,1 /*channel*/);
+PWM pwm1(1/*timer*/, 1 /*channel*/);
 PWM pwm0(2/*timer*/, 0 /*channel*/);
 PWM pwm2(1/*timer*/, 2 /*channel*/);
 
 PWM *pwms[8] = {&pwm7, &pwm1, &pwm0, &pwm2, NULL, NULL, NULL, NULL};
-
+uint16_t pwmFrequency[8];
+	
 void _setPWMFrequency(uint8_t pin, uint16_t frequency) {
-    if (pwms[pin]) {
-        pwms[pin]->SetFrequency(frequency);
-    }
+	if (pin >= 8) {
+		return;
+	}
+	pwmFrequency[pin] = frequency;
+	
+	// Hardware PWMs share timers, so they must be set in pairs
+	switch (pin) {
+		case 0:
+		case 2:
+			pwms[0]->SetFrequency(frequency);
+			pwms[2]->SetFrequency(frequency);
+			break;
+		case 1:
+		case 3:
+			pwms[1]->SetFrequency(frequency);
+			pwms[3]->SetFrequency(frequency);
+			break;	
+	}
 }
 
 void _setDirection(uint8_t pin, bool output) {
@@ -179,7 +196,6 @@ static void _setPullups(uint8_t pullups) {
     for (int i=0; i < 8; i++) {
         _setPullup(i, pullups & _BV(i));
     }
-
 }
 
 static uint8_t _getDigitalInputs() {
@@ -235,16 +251,19 @@ static uint16_t _completeAnalogRead() {
 
 
 void _updateSoftPWM() {
-    uint32_t softPWMFrequency = 50;
-    volatile uint32_t t = micros()*softPWMFrequency*655/10000;
-    t &= 0xFFFF;
     for (int i=0; i < 8; i++) {
 		if (pwms[i]) {
 			continue;
 		}
-        if (_pwmValues[i] == 0 or _pwmValues[i] == 0xFFFF) {
-            continue;
-        }
+		if (_pwmValues[i] == 0 or _pwmValues[i] == 0xFFFF) {
+			continue;
+		}
+
+		// We must be careful with overflows here.
+		//    micros*freq*65535/1e6
+		// ~= micros*freq*4292/65536
+		//  = micros*freq*4092 >> 16 
+		uint16_t t = (micros()*pwmFrequency[i]*4092) >> 16;
 
         if (t < _pwmValues[i]) {
             *GPIO_PORT[i] |= GPIO_MASK[i];
@@ -253,7 +272,6 @@ void _updateSoftPWM() {
         }
     }
 }
-
 
 enum GPIOCommands {
     FUNCTION_GET_DIGITAL_INPUT,
@@ -266,8 +284,6 @@ enum GPIOCommands {
     FUNCTION_SET_PWM_OUTPUT,
     FUNCTION_SET_PULLUP,
     FUNCTION_SET_PULLUPS,
-    FUNCTION_SET_DEBOUNCE,
-    FUNCTION_SET_DEBOUNCES,
     FUNCTION_SET_PWM_FREQUENCY
 };
 
@@ -296,7 +312,7 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
                 return false;
             }
             _setDirection(buffer.Get<uint8_t>(0),
-                              buffer.Get<uint8_t>(1));
+				buffer.Get<uint8_t>(1));
             return true;
         case FUNCTION_SET_DATA_DIRECTIONS:
             if (buffer.GetSize() != 1) {
@@ -342,7 +358,7 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer)
             if (buffer.GetSize() != 3) {
                 return false;
             }
-            _setPWMFrequency(buffer.Get<uint8_t>(0), buffer.Get<uint8_t>(1));
+            _setPWMFrequency(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(1));
             return true;
     }
     return false;
@@ -367,9 +383,8 @@ void ModuloReset() {
     _setDirections(0);
     _setPullups(0);
 	for (int i=0; i < 8; i++) {
-		if (pwms[i]) {
-			pwms[i]->SetCompareEnabled(false);
-		}
+		_setPWMFrequency(i, 50);
+		_setDigitalOutput(i, false);
 	}
 }
 
@@ -380,50 +395,15 @@ bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
 	return false;
 }
 
-
-uint16_t capSense(uint8_t pin) {
-    // Make the pin an input and enable the pullup resistor
-    // This charges the external capacitor to VCC
-    *(GPIO_PUE[pin]) |= GPIO_MASK[pin];
-    _delay_ms(1);
-
-    // Do an A/D conversion with 0V as the input.
-    // This charges the internal sample/hold capacitor to 0V
-    ADMUXA = 14;
-    ADMUXB = 0;
-    _startAnalogRead();
-    _completeAnalogRead();
-
-    // Disable the pullup
-    *(GPIO_PUE[pin]) &= ~GPIO_MASK[pin];
-
-    // Do an A/D conversion from the input pin. This connects
-    // the external and internal capacitors in parallel, so the
-    // voltage will be proportional to the external capacitance
-    _setAnalogInput(pin);
-    _startAnalogRead();
-    volatile uint16_t result = _completeAnalogRead();
-
-    asm("nop");
-    return result;
-
-}
-
 int main(void)
 {
 	ClockInit();
-	ModuloInit();
+	ModuloInit(false /*useInterrupt*/);
 	
 	while(1) {
-        _updateSoftPWM();
-/*
-        if (capSense(0) > 750) {
-            ModuloSetStatus(ModuloStatusOn);
-        } else {
-            ModuloSetStatus(ModuloStatusOff);
-        }
-*/
 		ModuloUpdateStatusLED();
+		TwoWireUpdate();
+		_updateSoftPWM();
 	}
 }
 
