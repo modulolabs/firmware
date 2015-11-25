@@ -20,48 +20,21 @@
 
 DECLARE_MODULO("co.modulo.tempprobe", 1);
 
-volatile uint16_t temperature = 0;
-
+volatile int16_t temperature = 0;
+volatile int16_t lastEventTemperature = 0;
 
 #define FUNCTION_GET_TEMPERATURE 0
+#define FUNCTION_GET_RAW_VALUE   1
 
-uint32_t R_values[] = {
-	190953,
-	145953,
-	112440,
-	87285,
-	68260,
-	53762,
-	42636,
-	34038,
-	27348,
-	22108,
-	17979,
-	14706,
-	12094,
-	10000,
-	8311,
-	6941,
-	5825,
-	4911,
-	4158,
-	3536,
-	3020,
-	2589,
-	2228,
-	1925,
-	1668,
-	1451,
-	1267,
-	1109,
-	974,
-	858,
-};
+#define EVENT_TEMPERATURE_CHANGE 0
 
 bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
    switch(command) {
         case FUNCTION_GET_TEMPERATURE:
-            buffer->AppendValue<uint16_t>((uint16_t)temperature);
+            buffer->AppendValue<uint16_t>(static_cast<uint16_t>(temperature));
+			return true;
+		case FUNCTION_GET_RAW_VALUE:
+			buffer->AppendValue<uint16_t>( ADCRead(11));
 			return true;
     }
     return false;
@@ -69,6 +42,9 @@ bool ModuloRead(uint8_t command, ModuloReadBuffer *buffer) {
 
 bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 	switch (buffer.GetCommand()) {
+		case FUNCTION_GET_TEMPERATURE:
+		case FUNCTION_GET_RAW_VALUE:
+			return true;
 	}
     return false;
 }
@@ -78,30 +54,19 @@ void ModuloReset() {
 }
 
 bool ModuloGetEvent(uint8_t *eventCode, uint16_t *eventData) {
-#if 0
-	if (buttonPressed or buttonReleased) {
-		*eventCode = EVENT_BUTTON_CHANGED;
-		*eventData = (buttonPressed << 8) | buttonReleased;
-		return true;
-	} else if (positionChanged) {
-		*eventCode = EVENT_POSITION_CHANGED;
-		*eventData = (hPos << 8) | (vPos);
+	if (temperature != lastEventTemperature) {
+		*eventCode = EVENT_TEMPERATURE_CHANGE;
+		*eventData = temperature;
 		return true;
 	}
-#endif
+
 	return false;
 }
 
 void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
-#if 0
-	if (eventCode == EVENT_BUTTON_CHANGED) {
-		buttonPressed = false;
-		buttonReleased = false;
+	if (eventCode == EVENT_TEMPERATURE_CHANGE and static_cast<int16_t>(eventData) == temperature) {
+		lastEventTemperature = eventData;
 	}
-	if (eventCode == EVENT_POSITION_CHANGED) {
-		positionChanged = false;
-	}
-#endif
 }
 
 float valueToTemperature(uint16_t val) {
@@ -119,27 +84,33 @@ float readTemperature() {
 
 int main(void)
 {
+	volatile float filteredTemp = readTemperature();
+	uint32_t lastTemperatureUpdate = 0;
+	temperature = filteredTemp*10;
+	
 	ClockInit();
-    
 	ModuloInit();
 
-	volatile float filteredTemp = readTemperature();
-	
 	while(1)
 	{
-		float filterRate = .01;
-		volatile float newTemperature = readTemperature();
-		filteredTemp = filterRate*newTemperature + (1.0-filterRate)*filteredTemp;
-
-		// Disable interrupts and atomically update the state
-		noInterrupts();
-		temperature = filteredTemp*10; // tenths of degrees
-		interrupts();
-		
-		// Rate limit the updates
-		_delay_ms(5);
-		
 		ModuloUpdateStatusLED();
+				
+		// Constantly read the temperature (every 1ms) and apply a low pass IIR filter.
+		float filterRate = .01;
+		float newTemperature = readTemperature();
+		filteredTemp = filterRate*newTemperature + (1.0-filterRate)*filteredTemp;
+		_delay_ms(1);
+		
+		// Every 100ms, update the temperature from the current filtered value
+		if ((millis()-lastTemperatureUpdate) > 100) {
+			lastTemperatureUpdate = millis();
+			
+			// Disable interrupts and atomically update the state
+			noInterrupts();
+			temperature = filteredTemp*10; // tenths of degrees
+			interrupts();
+		}
+
 	}
 }
 
