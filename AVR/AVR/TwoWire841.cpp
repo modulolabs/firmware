@@ -69,6 +69,34 @@ enum TWIState {
 static TWIState twiState = TWIStateIdle;
 
 
+// After certain types of bus errors, the two wire interface can lock up
+// with SDA held low. This prevents any further communication on the bus
+// including a global reset. Unfortunately, I haven't figured out a way
+// to detect and handle this condition using the TWI registers.
+//
+// This function works around the issue by checking the the SDA pin every
+// time it's called. If the pin is low a certain number of times in a row,
+// it assumes that the TWI may be locked and resets it.
+//
+// This function gets called by the global clock overflow handler to ensure
+// it is executed at a frequent and predictable rate.
+//
+uint16_t sdaLowCount = 0;
+void TwoWireWatchdog() {
+	bool sdaValue = (PINA & _BV(6));
+	if (!sdaValue) {
+		sdaLowCount++;
+	} else {
+		sdaLowCount = 0;
+	}
+	
+	// Each tick is 2048us, so 500 is about 1 second
+	if (sdaLowCount == 500) {
+		TWSCRA &= ~_BV(TWEN);
+		TWSCRA |= _BV(TWEN);
+	}
+}
+
 
 void TwoWireUpdate() {
 	uint8_t status = TWSSRA;

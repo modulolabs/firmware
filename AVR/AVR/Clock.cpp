@@ -48,10 +48,17 @@ uint32_t millis() {
     return micros()/1000;
 }
 
+void ClockCallback() __attribute__((weak));
+void ClockCallback() {
+	
+}
+void TwoWireWatchdog();
 
 ISR(TIMER0_OVF_vect)
 {
     timer0_overflow_count++;
+	TwoWireWatchdog();
+	ClockCallback();
 }
 
 /// Copied from Arduino
