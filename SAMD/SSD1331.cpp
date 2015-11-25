@@ -223,7 +223,7 @@ void SSD1331Init() {
     _writeByte(0x3E);
 
     _writeByte(SSD1331_CMD_MASTERCURRENT);  // 0x87
-	_writeByte(15);
+	_writeByte(11);
 
     _writeByte(SSD1331_CMD_CONTRASTA);  	// 0x81
     _writeByte(0xFF); // blue
@@ -245,6 +245,7 @@ void SSD1331Init() {
 		_writeByte(0xB9); // Linear Table
 	}
 
+
     _writeByte(SSD1331_CMD_DISPLAYON);	//--turn on oled panel
 }
 
@@ -255,4 +256,27 @@ void SSD1331RawWrite(bool dataMode, uint8_t x) {
 		_setCommandMode();
 	}
 	_writeByte(x);
+}
+
+void SSD1331SetCurrent(uint8_t current) {
+	if (current > 15) {
+		return;
+	}
+	_setCommandMode();
+
+    _writeByte(SSD1331_CMD_MASTERCURRENT);  // 0x87
+	_writeByte(current);	
+}
+
+void SSD1331SetContrast(uint8_t r, uint8_t g, uint8_t b) {
+	_setCommandMode();
+		
+    _writeByte(SSD1331_CMD_CONTRASTA);  	// 0x81
+    _writeByte(b); // blue
+	
+    _writeByte(SSD1331_CMD_CONTRASTB);  	// 0x82
+    _writeByte(g); // green
+	
+    _writeByte(SSD1331_CMD_CONTRASTC);  	// 0x83
+    _writeByte(r); // red
 }

@@ -22,6 +22,8 @@
 #define FUNCTION_RAW_WRITE 3
 #define FUNCTION_IS_EMPTY 4
 #define FUNCTION_GET_AVAILABLE_SPACE 5
+#define FUNCTION_SET_CURRENT 6
+#define FUNCTION_SET_CONTRAST 7
 
 volatile uint8_t buttons = 0;
 volatile uint8_t buttonsPressed = 0;
@@ -54,7 +56,18 @@ bool ModuloWrite(const ModuloWriteBuffer &buffer) {
 			return true;
 		case FUNCTION_GET_AVAILABLE_SPACE:
 			return true;
-			
+		case FUNCTION_SET_CURRENT:
+			if (buffer.GetSize() != 1) {
+				return false;
+			}
+			SSD1331SetCurrent(buffer.Get<uint8_t>(0));
+			return true;
+		case FUNCTION_SET_CONTRAST:
+			if (buffer.GetSize() != 3) {
+				return false;
+			}
+			SSD1331SetContrast(buffer.Get<uint8_t>(0),buffer.Get<uint8_t>(1), buffer.Get<uint8_t>(2));
+			return true;
 	}
 	return false;
 }
