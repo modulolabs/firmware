@@ -55,11 +55,11 @@ def mergeSAMD() :
     combinedHex = IntelHex()
 
     # Insert the bootloader in the first 8kB
-    for i in range(1024*8) :
+    for i in bootHex.addresses() :
         combinedHex[i] = bootHex[i]
 
     # Insert the application in the remaining 120kB
-    for i in range(1024*8,1024*128) :
+    for i in appHex.addresses() :
         combinedHex[i] = appHex[i]    
 
     # Write to the combined hex file
