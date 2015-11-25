@@ -85,7 +85,7 @@ static inline void _writeByte(uint8_t x) {
 	PORTA.OUTSET.reg = _BV(WR_PIN);	
 }
 
-void SSD1331Refresh(uint8_t width, uint8_t height, uint8_t *data) {
+void SSD1331Refresh(uint8_t width, uint8_t height, uint8_t *data, bool flip) {
 	// set x and y coordinate
 	_setCommandMode();
 	_writeByte(SSD1331_CMD_SETCOLUMN);
@@ -98,26 +98,51 @@ void SSD1331Refresh(uint8_t width, uint8_t height, uint8_t *data) {
 
 	_setDataMode();
 	
-	// Unrolling this loop gets us from 6 instruction per byte
-	// to approx 4.2 instructions per byte.
-	for (int i = width*height*2-16; i >= 0; i -= 16) {
-		_writeByte(data[i+15]);
-		_writeByte(data[i+14]);
-		_writeByte(data[i+13]);
-		_writeByte(data[i+12]);
-		_writeByte(data[i+11]);
-		_writeByte(data[i+10]);
-		_writeByte(data[i+9]);
-		_writeByte(data[i+8]);
-		_writeByte(data[i+7]);
-		_writeByte(data[i+6]);
-		_writeByte(data[i+5]);
-		_writeByte(data[i+4]);
-		_writeByte(data[i+3]);
-		_writeByte(data[i+2]);
-		_writeByte(data[i+1]);
-		_writeByte(data[i]);	
-	}	
+	if (flip) {
+		// Unrolling this loop gets us from 6 instruction per byte
+		// to approx 4.2 instructions per byte.
+		for (int i = 0; i+16 <= width*height*2; i += 16) {
+			_writeByte(data[i+1]);
+			_writeByte(data[i]);
+			_writeByte(data[i+3]);
+			_writeByte(data[i+2]);
+			_writeByte(data[i+5]);
+			_writeByte(data[i+4]);
+			_writeByte(data[i+7]);
+			_writeByte(data[i+6]);
+			_writeByte(data[i+9]);
+			_writeByte(data[i+8]);
+			_writeByte(data[i+11]);
+			_writeByte(data[i+10]);
+			_writeByte(data[i+13]);
+			_writeByte(data[i+12]);
+			_writeByte(data[i+15]);
+			_writeByte(data[i+14]);	
+		}	
+	} else {
+		// Unrolling this loop gets us from 6 instruction per byte
+		// to approx 4.2 instructions per byte.
+		for (int i = width*height*2-16; i >= 0; i -= 16) {
+			_writeByte(data[i+15]);
+			_writeByte(data[i+14]);
+			_writeByte(data[i+13]);
+			_writeByte(data[i+12]);
+			_writeByte(data[i+11]);
+			_writeByte(data[i+10]);
+			_writeByte(data[i+9]);
+			_writeByte(data[i+8]);
+			_writeByte(data[i+7]);
+			_writeByte(data[i+6]);
+			_writeByte(data[i+5]);
+			_writeByte(data[i+4]);
+			_writeByte(data[i+3]);
+			_writeByte(data[i+2]);
+			_writeByte(data[i+1]);
+			_writeByte(data[i]);	
+		}	
+	
+	}
+	
 }
 
 void SSD1331Init() {

@@ -61,8 +61,17 @@ void OpStream::ProcessOp() {
 
 	// Read and process the next operation
 	switch(_Read<uint8_t>()) {
+		case OpClear:
+			_display->fillScreen(0);
+			_lineColor = Color(255,255,255,255);
+			_fillColor = Color(255,255,255,255);
+			_textColor = Color(255,255,255,255);
+			_display->setTextSize(1);
+			cursor_x = 0;
+			cursor_y = 0;
+			break;
 		case OpRefresh:
-			SSD1331Refresh(_display->width(), _display->height(), _display->getData());
+			SSD1331Refresh(_display->width(), _display->height(), _display->getData(), _Read<uint8_t>());
 			break;
 		case OpFillScreen :
 			_display->fillScreen(_Read<Color>().Color565());
@@ -180,4 +189,3 @@ uint16_t OpStream::GetAvailableSpace() {
 	return STREAM_SIZE-_size;
 }
 
-	

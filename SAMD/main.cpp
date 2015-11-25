@@ -99,7 +99,7 @@ void ModuloClearEvent(uint8_t eventCode, uint16_t eventData) {
 
 void ModuloReset() {
 	display.fillScreen(Color(0,0,0).Color565());
-	SSD1331Refresh(display.width(), display.height(), display.getData());
+	SSD1331Refresh(display.width(), display.height(), display.getData(), false);
 }
 
 #define BUTTON_1_PIN 27
@@ -169,13 +169,17 @@ int main (void)
 	
 	SSD1331Init();
 
-	//display.fillScreen(Color(80,0,60).Color565());
-	//SSD1331Refresh(display.width(), display.height(), display.getData());
+
 	
 	ClockInit();
 	LoadModuloInfo();
 	ModuloInit();
 	
+	//display.fillScreen(Color(80,0,60).Color565());
+	//SSD1331Refresh(display.width(), display.height(), display.getData());
+	
+	
+
 	while (1) {
 		ModuloUpdateStatusLED();
 		

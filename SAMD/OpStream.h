@@ -28,6 +28,7 @@ public:
 	static const int OpDrawString = 9;
 	static const int OpSetCursor = 10;
 	static const int OpSetTextSize = 11;
+	static const int OpClear = 12;
 	
 	OpStream(Adafruit_GFX *display);
 	
