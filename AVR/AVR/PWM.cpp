@@ -91,13 +91,6 @@ void PWM::SetCompareEnabled(bool enabled) {
     } else {
         TOCPMCOE &= ~_BV(_channel);
     }
-	
-	if (_timerNum == 1) {
-		TCNT1 = 0;
-	}
-	if (_timerNum == 2) {
-		TCNT2 = 0;
-	}
 }
 
 void PWM::_SetTop(uint16_t value) {
@@ -139,6 +132,9 @@ void PWM::SetValue(uint16_t inValue) {
 
 void PWM::SetFrequency(uint32_t freq)
 {
+	// Using phase correct pwm, must multiplu freq by 2
+	freq *= 2;
+	
 	uint32_t counterMax = (1L << 16);
 	
 	// Number of CPU cycles per PWM cycle
