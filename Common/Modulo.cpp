@@ -23,6 +23,7 @@
 #define BroadcastCommandGetEvent 7
 #define BroadcastCommandClearEvent 8
 #define BroadcastCommandSetStatusLED 9
+#define BroadcastCommandSetDeviceID 10
 
 const uint8_t moduloBroadcastAddress = 9;
 
@@ -131,7 +132,13 @@ static bool _ModuloWrite(uint8_t address, uint8_t *data, uint8_t len) {
 					ModuloClearEvent(buffer.Get<uint8_t>(0), buffer.Get<uint16_t>(3));
                     return true;
                 }
-                break;				
+                break;
+			case BroadcastCommandSetDeviceID:
+				if (buffer.GetSize() == 4 and buffer.Get<uint16_t>(0) == GetDeviceID()) {
+					SetDeviceID(buffer.Get<uint16_t>(2));
+					return true;
+				}
+				break;
         }
         return false;
     }

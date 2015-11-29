@@ -508,7 +508,6 @@
   <armgcccpp.compiler.warnings.AllWarnings>True</armgcccpp.compiler.warnings.AllWarnings>
   <armgcccpp.linker.libraries.Libraries>
     <ListValues>
-      <Value>libarm_cortexM0l_math</Value>
       <Value>libm</Value>
     </ListValues>
   </armgcccpp.linker.libraries.Libraries>

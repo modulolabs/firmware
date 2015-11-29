@@ -42,7 +42,7 @@
       <ToolOptions>
         <InterfaceProperties>
           <IspClock>250000</IspClock>
-          <DebugWireClockDiv>8000</DebugWireClockDiv>
+          <DebugWireClockDiv>0</DebugWireClockDiv>
         </InterfaceProperties>
         <InterfaceName>debugWIRE</InterfaceName>
       </ToolOptions>
@@ -183,6 +183,10 @@
       <SubType>compile</SubType>
       <Link>Common\crc.h</Link>
     </Compile>
+    <Compile Include="..\Common\DeviceID.h">
+      <SubType>compile</SubType>
+      <Link>Common\DeviceID.h</Link>
+    </Compile>
     <Compile Include="..\Common\Modulo.cpp">
       <SubType>compile</SubType>
       <Link>Common\Modulo.cpp</Link>
@@ -190,6 +194,10 @@
     <Compile Include="..\Common\Modulo.h">
       <SubType>compile</SubType>
       <Link>Common\Modulo.h</Link>
+    </Compile>
+    <Compile Include="..\Common\ModuloInfo.h">
+      <SubType>compile</SubType>
+      <Link>Common\ModuloInfo.h</Link>
     </Compile>
     <Compile Include="..\Common\StatusLED.h">
       <SubType>compile</SubType>
@@ -230,9 +238,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\IR.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="AVR\ModuloInfo.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="AVR\MotorCurrentLimit.cpp">

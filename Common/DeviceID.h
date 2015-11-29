@@ -12,6 +12,6 @@
 #include <inttypes.h>
 
 uint16_t GetDeviceID();
-
+void SetDeviceID(uint16_t deviceID);
 
 #endif /* DEVICEID_H_ */

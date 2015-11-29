@@ -31,11 +31,14 @@ uint16_t GetDeviceID() {
 			_moduloID = r ^ (r >> 16); // xor the low and high words to conserve entropy
 			eeprom_write_word(&moduloInfo.id, _moduloID);
 		}
-
 	}
 	
-	
 	return _moduloID;
+}
+
+void SetDeviceID(uint16_t moduloID) {
+	_moduloID = moduloID;
+	eeprom_write_word(&moduloInfo.id, _moduloID);
 }
 
 uint16_t GetModuloVersion() {
