@@ -6,7 +6,7 @@ ALL = KnobWithBootloader.hex DisplayWithBootloader.hex BlankSlateWithBootloader.
 
 default : $(ALL)
 
-%WithBootloader.hex : bootloader-attiny.hex
+%WithBootloader.hex : %.hex bootloader-attiny.hex
 	./mergeBootloader.py -avr bootloader-attiny.hex $*.hex $*WithBootloader.hex
 
 DisplayWithBootloader.hex : Display.hex bootloader-samd20.hex
