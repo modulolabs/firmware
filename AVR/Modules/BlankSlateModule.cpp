@@ -380,11 +380,15 @@ bool ModuloRead(uint8_t command,  ModuloReadBuffer *buffer) {
 }
 
 void ModuloReset() {
-    _setDirections(0);
+	_setDirections(0);
+	_setDigitalOutputs(0);
     _setPullups(0);
+	
+	// Note: Must not call _setDigitalOutput(i, false) since that will set the
+	// data direction to output. _setDigitalOutputs(0) is okay, however.
+	
 	for (int i=0; i < 8; i++) {
 		_setPWMFrequency(i, 50);
-		_setDigitalOutput(i, false);
 	}
 }
 
